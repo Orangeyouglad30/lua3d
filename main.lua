@@ -1,3 +1,12 @@
+package.path =
+    "./vendor/lua/?.lua;" ..
+    "./vendor/lua/?/init.lua;" ..
+    package.path
+
+package.cpath =
+    "./vendor/bin/?.dll;" ..
+    package.cpath
+
 print("Running project...")
 
 --Libraries

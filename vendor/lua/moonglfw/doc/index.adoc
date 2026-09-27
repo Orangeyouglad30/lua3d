@@ -1,0 +1,20 @@
+= MoonGLFW Reference Manual
+Stefano Trettel
+v0.11, 2019-04-16
+:toc: left
+:toclevels: 3
+:stylesdir: ./
+:stylesheet: colony.css
+:source-highlighter: pygments
+:pygments-style: autumn
+:source-language: lua
+:examplesdir: ../examples
+
+image::powered-by-lua.gif[Lua logo, link=http://www.lua.org]
+
+include::preface.adoc[]
+
+include::bindings.adoc[]
+include::enums.adoc[]
+include::structs.adoc[]
+

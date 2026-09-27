@@ -1,0 +1,11 @@
+*.log
+*.so
+*.dll
+*.o
+*.swp
+*.symbols
+core.*
+examples/output*.*
+local/
+src/DIFF
+src/TODO

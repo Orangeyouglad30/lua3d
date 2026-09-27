@@ -1,0 +1,33 @@
+
+=== Initialization, version and errors
+
+[small]#Rfr: link:http://www.glfw.org/docs/latest/group__init.html[Initialization, version and errors].#
+
+MoonGLFW automatically calls *glfwInit*( ) when it is loaded, and *glfwTerminate*( ) at exit.
+
+[[init_hint]]
+* *init_hint*(<<enums_init_hint, _hint_>>, _value_) +
+*init*( ) +
+[small]#Use these functions only if you need to set some <<enums_init_hint, init hints>>, which are to be set before initialization of GLFW. If GLFW has already been initialized, calling _init_hint(&nbsp;)_ automatically terminates it. After having set the desired hints, call _init(&nbsp;)_ to finilize the initialization.#
+
+* The *glfw* table contains the following version fields: +
+** *_VERSION*: a string describing the MoonGLFW version, and +
+** *_GLFW_VERSION*: a string describing the GLFW version.
+
+[[get_version]]
+* _major_, _minor_, _rev_ = *get_version*( )
+
+[[get_version_string]]
+* _string_= *get_version_string*( )
+
+[[get_platform]]
+* _platform_ = *get_platform*( ) +
+_boolean_ = *platform_supported*(_platform_) +
+[small]#'_platform_': '_null_' | '_win32_' | '_cocoa_' | '_wayland_' | '_x11_'.#
+
+[[set_error_callback]]
+* *set_error_callback*([_func_]) +
+[small]#The _func_ callback is executed as *_func(ec, descr)_* where _ec_ (an integer) is the
+error code and _descr_ (a string) is the description of the occurred error. +
+If _func_ is _nil_, unregisters the current error callback (if any).#
+

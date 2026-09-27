@@ -1,0 +1,13 @@
+.DS_Store
+*.dylib
+*.log
+*.so
+*.dll
+*.o
+*.swp
+*.symbols
+core.*
+local/
+tutorials/
+src/TODO
+src/DIFF
