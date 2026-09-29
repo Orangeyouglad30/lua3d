@@ -21,6 +21,8 @@ local Vector3d = require("math/vector3d")
 local Vector2d = require("math/vector2d")
 local Light = require("engine/light")
 local Object3d = require("engine/object3d")
+local Material = require("engine/material")
+local Textures = require("engine/textures")
 
 --Constants
 local field_of_view = math.rad(70)
@@ -42,7 +44,6 @@ lighting:set_intensity(1)
 local window
 local cam
 local previous_time = 0
-local texture
 
 local function createGLFWWindow()
     glfw.window_hint("context version major", 3)
@@ -60,38 +61,6 @@ local function createGLFWWindow()
 
     gl.init()
 
-    local mi = require("moonimage")
-
-    local image, width, height = mi.load(
-        "assets/textures/crate1_diffuse.png",
-        "rgb"
-    )
-
-    assert(image, "Failed to load texture")
-
-    texture = gl.new_texture("2d")
-
-    gl.bind_texture("2d", texture)
-
-    gl.texture_parameter("2d", "wrap s", "repeat")
-    gl.texture_parameter("2d", "wrap t", "repeat")
-    gl.texture_parameter("2d", "min filter", "linear")
-    gl.texture_parameter("2d", "mag filter", "linear")
-
-    gl.texture_image(
-        "2d",
-        0,
-        "rgb",
-        "rgb",
-        "ubyte",
-        image,
-        width,
-        height
-    )
-
-    gl.generate_mipmap("2d")
-    gl.unbind_texture("2d")
-
     gl.enable("depth test")
     gl.clear_depth(1.0)
 
@@ -104,6 +73,30 @@ local function createGLFWWindow()
 end
 
 createGLFWWindow()
+
+print("Creating materials...")
+
+local textures = Textures.new(
+    "assets/textures"
+)
+
+local crate_material = Material.new(
+    textures:get("crate1"),
+    16.0,
+    1.0
+)
+
+local brick_material = Material.new(
+    textures:get("brick1"),
+    16.0,
+    0.2
+)
+
+local ice_material = Material.new(
+    textures:get("ice1"),
+    128.0,
+    0.4
+)
 
 print("Creating shader program...")
 
@@ -236,14 +229,18 @@ add_face(
 
 local cubeMesh = Mesh.new(vertices, indices)
 
-local leftCube = Object3d.new(cubeMesh)
+local leftCube = Object3d.new(cubeMesh,ice_material)
 leftCube:set_position(-3,0,0)
 
-local rightCube = Object3d.new(cubeMesh)
+local rightCube = Object3d.new(cubeMesh,brick_material)
 rightCube:set_position(3,0,0)
 rightCube:set_scale(2,1,4)
 
-local objects = {rightCube,leftCube}
+local middleCube = Object3d.new(cubeMesh,crate_material)
+middleCube:set_position(0,0,-3)
+middleCube:set_scale(2,2,2)
+
+local objects = {rightCube,leftCube,middleCube}
 
 print("Entering render loop...")
 
@@ -308,11 +305,6 @@ while not glfw.window_should_close(window) do
 
     shader:use()
 
-    gl.active_texture(0)
-    gl.bind_texture("2d", texture)
-
-    shader:set_int("diffuseTexture", 0)
-
     shader:set_lighting(lighting)
 
     shader:set_matrix("projection", cam:get_projection())
@@ -324,12 +316,19 @@ while not glfw.window_should_close(window) do
         cam.position
     )
 
-    shader:set_float("shininess", 32.0)
-    shader:set_float("specularStrength", 1)
+    for _, object in pairs(objects) do
+        object:set_rotation(
+            math.sin(current_time),
+            math.cos(current_time) * 2,
+            0
+        )
 
-    for _,object in pairs(objects) do
-        object:set_rotation(math.sin(current_time),math.cos(current_time)*2,0)
-        shader:set_matrix("model",object:get_model())
+        shader:set_matrix(
+            "model",
+            object:get_model()
+        )
+
+        object.material:apply(shader)
         object:draw("triangles")
     end
 
