@@ -19,6 +19,7 @@ A small three-dimensional engine written in Lua using OpenGL.
 - Windows
 - A graphics driver supporting OpenGL three point three or newer
 - No separate Lua, MoonGL, MoonGLFW, or MoonImage installation is required
+- If running using a separte Lua installation, Lua 5.1, 5.2 or 5.3 is required
 
 The project includes its required Lua executable, dynamic libraries, and Lua support files inside the `vendor` folder.
 
