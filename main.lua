@@ -20,12 +20,13 @@ local Camera = require("engine/camera")
 local Vector3d = require("math/vector3d")
 local Vector2d = require("math/vector2d")
 local Light = require("engine/light")
+local Object3d = require("engine/object3d")
 
 --Constants
 local field_of_view = math.rad(70)
 local aspect_ratio = 1
 local near_distance = 0.1
-local far_distance = 10
+local far_distance = 300
 local camera_distance = 5
 
 local move_speed = 3.0
@@ -33,7 +34,7 @@ local turn_speed = 1.0
 
 local lighting = Light.new()
 
-lighting:set_direction(Vector3d.new(0,0,-1):Unit())
+lighting:set_direction(Vector3d.new(0,-1,-1):Unit())
 lighting:set_color(Vector3d.new(1,1,1))
 lighting:set_intensity(1)
 
@@ -142,7 +143,7 @@ local function add_face(vertices, indices, a, b, c, d, color)
 
     local vec1 = Vector3d.new(b[1]-a[1],b[2]-a[2],b[3]-a[3])
     local vec2 = Vector3d.new(c[1]-a[1],c[2]-a[2],c[3]-a[3])
-    local normal = vec1:Cross(vec2):Unit():flatten()
+    local normal = vec2:Cross(vec1):Unit():flatten()
 
     -- Add each face corner once.
     add_vertex(vertices, a, color, normal, Vector2d.new(0,1):flatten())
@@ -233,7 +234,16 @@ add_face(
     cyan
 )
 
-local newCube = Mesh.new(vertices, indices)
+local cubeMesh = Mesh.new(vertices, indices)
+
+local leftCube = Object3d.new(cubeMesh)
+leftCube:set_position(-3,0,0)
+
+local rightCube = Object3d.new(cubeMesh)
+rightCube:set_position(3,0,0)
+rightCube:set_scale(2,1,4)
+
+local objects = {rightCube,leftCube}
 
 print("Entering render loop...")
 
@@ -308,11 +318,20 @@ while not glfw.window_should_close(window) do
     shader:set_matrix("projection", cam:get_projection())
     
     shader:set_matrix("view", cam:get_view())
-    
-    local model = Transform.translation(0,0,0) * Transform.rotation_y(current_time) * Transform.rotation_x(current_time*0.5)
-    shader:set_matrix("model", model)
-    
-    newCube:draw("triangles")
+
+    shader:set_vector3(
+        "viewPosition",
+        cam.position
+    )
+
+    shader:set_float("shininess", 32.0)
+    shader:set_float("specularStrength", 1)
+
+    for _,object in pairs(objects) do
+        object:set_rotation(math.sin(current_time),math.cos(current_time)*2,0)
+        shader:set_matrix("model",object:get_model())
+        object:draw("triangles")
+    end
 
     glfw.swap_buffers(window)
 end

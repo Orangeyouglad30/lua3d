@@ -20,6 +20,10 @@ function Vector2d.new(x,y)
     return self
 end
 
+function Vector2d.Zero()
+    return Vector2d.new(0,0,0)
+end
+
 --Methods
 
 function Vector2d:Magnitude()

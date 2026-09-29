@@ -21,6 +21,10 @@ function Vector3d.new(x,y,z)
     return self
 end
 
+function Vector3d.Zero()
+    return Vector3d.new(0,0,0)
+end
+
 --Methods
 
 function Vector3d:Magnitude()

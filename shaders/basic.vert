@@ -6,8 +6,9 @@ layout (location = 2) in vec3 normal;
 layout (location = 3) in vec2 uv;
 
 out vec3 vertexColor;
-out vec3 vertexNormal;
 out vec2 vertexUV;
+out vec3 fragmentPosition;
+out vec3 fragmentNormal;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -18,6 +19,10 @@ void main()
     gl_Position = projection * view * model * vec4(position, 1.0);
 
     vertexColor = color;
-    vertexNormal = mat3(model) * normal;
     vertexUV = uv;
+
+    vec4 world_position = model * vec4(position, 1.0);
+    fragmentPosition = world_position.xyz;
+
+    fragmentNormal = mat3(transpose(inverse(model))) * normal;
 }

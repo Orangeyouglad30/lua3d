@@ -43,7 +43,7 @@ function Transform.rotation_z(angle)
 end
 
 function Transform.scale(x,y,z,s)
-    x,y,z = x or 1,y or 1,z or 1,s or 1
+    x,y,z,s = x or 1,y or 1,z or 1,s or 1
 
     return Matrix.new({
         {x, 0, 0, 0},
