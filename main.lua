@@ -23,6 +23,7 @@ local Light = require("engine/light")
 local Object3d = require("engine/object3d")
 local Material = require("engine/material")
 local Textures = require("engine/textures")
+local Materials = require("engine/materials")
 
 --Constants
 local field_of_view = math.rad(70)
@@ -76,27 +77,7 @@ createGLFWWindow()
 
 print("Creating materials...")
 
-local textures = Textures.new(
-    "assets/textures"
-)
-
-local crate_material = Material.new(
-    textures:get("crate1"),
-    16.0,
-    1.0
-)
-
-local brick_material = Material.new(
-    textures:get("brick1"),
-    16.0,
-    0.2
-)
-
-local ice_material = Material.new(
-    textures:get("ice1"),
-    128.0,
-    0.4
-)
+Materials.load()
 
 print("Creating shader program...")
 
@@ -229,14 +210,14 @@ add_face(
 
 local cubeMesh = Mesh.new(vertices, indices)
 
-local leftCube = Object3d.new(cubeMesh,ice_material)
+local leftCube = Object3d.new(cubeMesh,Materials.Ice)
 leftCube:set_position(-3,0,0)
 
-local rightCube = Object3d.new(cubeMesh,brick_material)
+local rightCube = Object3d.new(cubeMesh,Materials.Brick)
 rightCube:set_position(3,0,0)
 rightCube:set_scale(2,1,4)
 
-local middleCube = Object3d.new(cubeMesh,crate_material)
+local middleCube = Object3d.new(cubeMesh,Materials.Crate)
 middleCube:set_position(0,0,-3)
 middleCube:set_scale(2,2,2)
 
@@ -323,13 +304,7 @@ while not glfw.window_should_close(window) do
             0
         )
 
-        shader:set_matrix(
-            "model",
-            object:get_model()
-        )
-
-        object.material:apply(shader)
-        object:draw("triangles")
+        object:draw(shader,"triangles")
     end
 
     glfw.swap_buffers(window)

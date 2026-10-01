@@ -1,6 +1,7 @@
 local Vector3d = require("math/vector3d")
 local Matrix = require("math/matrix")
 local Transform = require("engine/transform")
+local Materials = require("engine/materials")
 local gl = require("moongl")
 
 local Object3d = {}
@@ -9,6 +10,8 @@ Object3d.__index = Object3d
 --Constructors
 
 function Object3d.new(mesh,material)
+    material = material or Materials.Crate
+
     local self = setmetatable({},Object3d)
 
     self.position = Vector3d.Zero()
@@ -42,7 +45,14 @@ function Object3d:get_model()
     return  Transform.translation(self.position.x,self.position.y,self.position.z) * Transform.rotation_y(self.rotation.y) * Transform.rotation_x(self.rotation.x) * Transform.rotation_z(self.rotation.z) * Transform.scale(self.scale.x,self.scale.y,self.scale.z)
 end
 
-function Object3d:draw(mode)
+function Object3d:draw(shader,mode)
+    shader:set_matrix(
+            "model",
+            self:get_model()
+    )
+    
+    self.material:apply(shader)
+
     gl.bind_vertex_array(self.mesh.vao)
 
     gl.draw_elements(
