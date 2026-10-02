@@ -24,6 +24,7 @@ local Object3d = require("engine/object3d")
 local Material = require("engine/material")
 local Textures = require("engine/textures")
 local Materials = require("engine/materials")
+local Common = require("math/common")
 
 --Constants
 local field_of_view = math.rad(70)
@@ -60,6 +61,10 @@ local function createGLFWWindow()
 
     glfw.make_context_current(window)
 
+    glfw.make_context_current(window)
+
+    glfw.swap_interval(0)
+
     gl.init()
 
     gl.enable("depth test")
@@ -91,7 +96,7 @@ print("Creating camera...")
 cam = Camera.new(field_of_view,aspect_ratio,near_distance,far_distance)
 cam:set_position(0,0,camera_distance)
 
-print("Creating object...")
+print("Creating objects and meshes...")
 
 local function add_vertex(vertices, position, color, normal,uv)
     vertices[#vertices + 1] = position[1]
@@ -209,21 +214,28 @@ add_face(
 )
 
 local cubeMesh = Mesh.new(vertices, indices)
+local monkeyMesh = Mesh.createFromObj("assets/models/blender_monkey.obj")
+local cubeObjMesh = Mesh.createFromObj("assets/models/cube.obj")
 
-local leftCube = Object3d.new(cubeMesh,Materials.Ice)
+local leftCube = Object3d.new(monkeyMesh,Materials.Ice)
 leftCube:set_position(-3,0,0)
 
-local rightCube = Object3d.new(cubeMesh,Materials.Brick)
+local rightCube = Object3d.new(monkeyMesh,Materials.Brick)
 rightCube:set_position(3,0,0)
 rightCube:set_scale(2,1,4)
 
-local middleCube = Object3d.new(cubeMesh,Materials.Crate)
+local middleCube = Object3d.new(monkeyMesh,Materials.Crate)
 middleCube:set_position(0,0,-3)
-middleCube:set_scale(2,2,2)
+middleCube:set_scale(1,1,1)
 
 local objects = {rightCube,leftCube,middleCube}
 
 print("Entering render loop...")
+
+local fpsUpdatePeriodic = 300
+local frames = 0
+local fpsSmoothing = 0.001
+local FPS = 0
 
 while not glfw.window_should_close(window) do
     glfw.poll_events()
@@ -231,6 +243,14 @@ while not glfw.window_should_close(window) do
     local current_time = glfw.get_time()
     local delta_time = current_time - previous_time
     previous_time = current_time
+
+    frames = frames + 1
+
+    FPS = Common.lerp(FPS,1/delta_time,fpsSmoothing)
+
+    if frames%fpsUpdatePeriodic == 0 then
+        print("FPS: "..math.floor(FPS))
+    end
 
     local distance = move_speed * delta_time
 
@@ -298,16 +318,14 @@ while not glfw.window_should_close(window) do
     )
 
     for _, object in pairs(objects) do
-        object:set_rotation(
-            math.sin(current_time),
-            math.cos(current_time) * 2,
-            0
-        )
+        object:set_rotation(math.sin(current_time), math.cos(current_time) * 2, 0)
 
         object:draw(shader,"triangles")
     end
 
     glfw.swap_buffers(window)
 end
+
+glfw.destroy_window(window)
 
 print("Program ended.")
