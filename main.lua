@@ -25,22 +25,22 @@ local Material = require("engine/material")
 local Textures = require("engine/textures")
 local Materials = require("engine/materials")
 local Common = require("math/common")
+local Scene = require("engine/scene")
 
 --Constants
-local field_of_view = math.rad(70)
-local aspect_ratio = 1
-local near_distance = 0.1
-local far_distance = 300
-local camera_distance = 5
-
 local move_speed = 3.0
 local turn_speed = 1.0
 
-local lighting = Light.new()
+local mouse_locked = true
+local simulation_paused = false
+local first_mouse_event = true
+local previous_mouse_x = 0
+local previous_mouse_y = 0
+local escape_was_down = false
 
-lighting:set_direction(Vector3d.new(0,-1,-1):Unit())
-lighting:set_color(Vector3d.new(1,1,1))
-lighting:set_intensity(1)
+print("Creating scene...")
+
+local scene = Scene.new()
 
 --Dynamics
 local window
@@ -61,7 +61,11 @@ local function createGLFWWindow()
 
     glfw.make_context_current(window)
 
-    glfw.make_context_current(window)
+    glfw.set_input_mode(
+        window,
+        "cursor",
+        "disabled"
+    )
 
     glfw.swap_interval(0)
 
@@ -74,8 +78,55 @@ local function createGLFWWindow()
 
     glfw.set_window_size_callback(window, function(_, width, height)
         gl.viewport(0, 0, width, height)
-        cam:set_aspect_ratio(width/height)
+        scene.camera:set_aspect_ratio(width/height)
     end)
+
+    glfw.set_cursor_pos_callback(
+        window,
+        function(_, mouse_x, mouse_y)
+            if not mouse_locked then
+                return
+            end
+
+            if first_mouse_event then
+                previous_mouse_x = mouse_x
+                previous_mouse_y = mouse_y
+                first_mouse_event = false
+                return
+            end
+
+            local delta_x =
+                mouse_x - previous_mouse_x
+
+            local delta_y =
+                mouse_y - previous_mouse_y
+
+            previous_mouse_x = mouse_x
+            previous_mouse_y = mouse_y
+
+            scene.camera:gimble(delta_x, delta_y)
+        end
+    )
+
+    glfw.set_mouse_button_callback(
+        window,
+        function(_, button, action)
+            if button == "left"
+            and action == "press"
+            and not mouse_locked then
+
+                mouse_locked = true
+                simulation_paused = false
+                first_mouse_event = true
+
+                glfw.set_input_mode(
+                    window,
+                    "cursor",
+                    "disabled"
+                )
+            end
+        end
+    )
 end
 
 createGLFWWindow()
@@ -91,148 +142,34 @@ local shader = Shader.new(
     "shaders/basic.frag"
 )
 
-print("Creating camera...")
+print("Positioning camera...")
 
-cam = Camera.new(field_of_view,aspect_ratio,near_distance,far_distance)
-cam:set_position(0,0,camera_distance)
+scene.camera:set_position(0,0,5)
 
 print("Creating objects and meshes...")
 
-local function add_vertex(vertices, position, color, normal,uv)
-    vertices[#vertices + 1] = position[1]
-    vertices[#vertices + 1] = position[2]
-    vertices[#vertices + 1] = position[3]
-
-    vertices[#vertices + 1] = color[1]
-    vertices[#vertices + 1] = color[2]
-    vertices[#vertices + 1] = color[3]
-
-    vertices[#vertices + 1] = normal[1]
-    vertices[#vertices + 1] = normal[2]
-    vertices[#vertices + 1] = normal[3]
-
-    vertices[#vertices + 1] = uv[1]
-    vertices[#vertices + 1] = uv[2]
-end
-
-local function add_face(vertices, indices, a, b, c, d, color)
-    -- The first vertex index for this face.
-    -- Indices are zero-based because OpenGL uses zero-based indices.
-    local base_index = #vertices / 11
-
-    local vec1 = Vector3d.new(b[1]-a[1],b[2]-a[2],b[3]-a[3])
-    local vec2 = Vector3d.new(c[1]-a[1],c[2]-a[2],c[3]-a[3])
-    local normal = vec2:Cross(vec1):Unit():flatten()
-
-    -- Add each face corner once.
-    add_vertex(vertices, a, color, normal, Vector2d.new(0,1):flatten())
-    add_vertex(vertices, b, color, normal, Vector2d.new(1,1):flatten())
-    add_vertex(vertices, c, color, normal, Vector2d.new(1,0):flatten())
-    add_vertex(vertices, d, color, normal, Vector2d.new(0,0):flatten())
-
-    -- Two triangles:
-    -- a, b, c
-    -- a, c, d
-    indices[#indices + 1] = base_index
-    indices[#indices + 1] = base_index + 1
-    indices[#indices + 1] = base_index + 2
-
-    indices[#indices + 1] = base_index
-    indices[#indices + 1] = base_index + 2
-    indices[#indices + 1] = base_index + 3
-end
-
-local red    = {1.0, 0.0, 0.0}
-local green  = {0.0, 1.0, 0.0}
-local blue   = {0.0, 0.0, 1.0}
-local yellow = {1.0, 1.0, 0.0}
-local cyan   = {0.0, 1.0, 1.0}
-local purple = {1.0, 0.0, 1.0}
-local gray   = {0.5, 0.5, 0.5}
-
-local vertices = {}
-local indices = {}
-
-add_face(
-    vertices,
-    indices,
-    {-0.5,  0.5,  0.5},
-    { 0.5,  0.5,  0.5},
-    { 0.5, -0.5,  0.5},
-    {-0.5, -0.5,  0.5},
-    red
-)
-
-add_face(
-    vertices,
-    indices,
-    { 0.5,  0.5, -0.5},
-    {-0.5,  0.5, -0.5},
-    {-0.5, -0.5, -0.5},
-    { 0.5, -0.5, -0.5},
-    green
-)
-
-add_face(
-    vertices,
-    indices,
-    {-0.5,  0.5, -0.5},
-    {-0.5,  0.5,  0.5},
-    {-0.5, -0.5,  0.5},
-    {-0.5, -0.5, -0.5},
-    blue
-)
-
-add_face(
-    vertices,
-    indices,
-    { 0.5,  0.5,  0.5},
-    { 0.5,  0.5, -0.5},
-    { 0.5, -0.5, -0.5},
-    { 0.5, -0.5,  0.5},
-    yellow
-)
-
-add_face(
-    vertices,
-    indices,
-    {-0.5,  0.5, -0.5},
-    { 0.5,  0.5, -0.5},
-    { 0.5,  0.5,  0.5},
-    {-0.5,  0.5,  0.5},
-    purple
-)
-
-add_face(
-    vertices,
-    indices,
-    {-0.5, -0.5,  0.5},
-    { 0.5, -0.5,  0.5},
-    { 0.5, -0.5, -0.5},
-    {-0.5, -0.5, -0.5},
-    cyan
-)
-
-local cubeMesh = Mesh.new(vertices, indices)
 local monkeyMesh = Mesh.createFromObj("assets/models/blender_monkey.obj")
+local ironManMesh = Mesh.createFromObj("assets/models/IronMan.obj")
 local cubeObjMesh = Mesh.createFromObj("assets/models/cube.obj")
+local humanMesh = Mesh.createFromObj("assets/models/FinalBaseMesh.obj")
 
 local leftCube = Object3d.new(monkeyMesh,Materials.Ice)
 leftCube:set_position(-3,0,0)
+scene:add("left",leftCube)
 
-local rightCube = Object3d.new(monkeyMesh,Materials.Brick)
+local rightCube = Object3d.new(ironManMesh,Materials.Crate)
 rightCube:set_position(3,0,0)
-rightCube:set_scale(2,1,4)
+rightCube:set_scale(1,1,1)
+scene:add("right",rightCube)
 
 local middleCube = Object3d.new(monkeyMesh,Materials.Crate)
 middleCube:set_position(0,0,-3)
 middleCube:set_scale(1,1,1)
-
-local objects = {rightCube,leftCube,middleCube}
+scene:add("middle",middleCube)
 
 print("Entering render loop...")
 
-local fpsUpdatePeriodic = 300
+local fpsUpdatePeriodic = 2000
 local frames = 0
 local fpsSmoothing = 0.001
 local FPS = 0
@@ -240,19 +177,46 @@ local FPS = 0
 while not glfw.window_should_close(window) do
     glfw.poll_events()
 
+    local escape_down =
+        glfw.get_key(window, "escape") == "press"
+
+    if escape_down and not escape_was_down then
+        simulation_paused = not simulation_paused
+        mouse_locked = not simulation_paused
+        first_mouse_event = true
+
+        if mouse_locked then
+            glfw.set_input_mode(
+                window,
+                "cursor",
+                "disabled"
+            )
+        else
+            glfw.set_input_mode(
+                window,
+                "cursor",
+                "normal"
+            )
+        end
+    end
+
+    escape_was_down = escape_down
+
     local current_time = glfw.get_time()
-    local delta_time = current_time - previous_time
+    local dt = current_time - previous_time
     previous_time = current_time
 
     frames = frames + 1
 
-    FPS = Common.lerp(FPS,1/delta_time,fpsSmoothing)
+    FPS = Common.lerp(FPS,1/dt,fpsSmoothing)
 
     if frames%fpsUpdatePeriodic == 0 then
         print("FPS: "..math.floor(FPS))
     end
 
-    local distance = move_speed * delta_time
+    scene:update(dt)
+
+    local distance = move_speed * dt
 
     local forward_input = 0
     local strafe_input = 0
@@ -274,14 +238,24 @@ while not glfw.window_should_close(window) do
     end
 
     if glfw.get_key(window, "left") == "press" then
-        cam:rotate(0, turn_speed * delta_time, 0)
+        scene.camera:rotate(0, turn_speed * dt, 0)
     end
 
     if glfw.get_key(window, "right") == "press" then
-        cam:rotate(0, -turn_speed * delta_time, 0)
+        scene.camera:rotate(0, -turn_speed * dt, 0)
     end
 
-    local yaw = cam.rotation.y
+    local vertical_input = 0
+
+    if glfw.get_key(window, "space") == "press" then
+        vertical_input = vertical_input + 1
+    end
+
+    if glfw.get_key(window, "left shift") == "press" then
+        vertical_input = vertical_input - 1
+    end
+
+    local yaw = scene.camera.rotation.y
 
     local forward_x = -math.sin(yaw)
     local forward_z = -math.cos(yaw)
@@ -291,37 +265,29 @@ while not glfw.window_should_close(window) do
 
     local movement_x =
         (forward_x * forward_input + right_x * strafe_input)
-        * delta_time
+        * dt
         * move_speed
 
     local movement_z =
         (forward_z * forward_input + right_z * strafe_input)
-        * delta_time
+        * dt
         * move_speed
 
-    cam:move(movement_x, 0, movement_z)
+    local movement_y = 
+        (vertical_input)
+        * dt
+        * move_speed
+
+    scene.camera:move(movement_x, movement_y, movement_z)
 
     gl.clear_color(0.1, 0.1, 0.15, 1.0)
     gl.clear("color","depth")
 
-    shader:use()
-
-    shader:set_lighting(lighting)
-
-    shader:set_matrix("projection", cam:get_projection())
-    
-    shader:set_matrix("view", cam:get_view())
-
-    shader:set_vector3(
-        "viewPosition",
-        cam.position
-    )
-
-    for _, object in pairs(objects) do
-        object:set_rotation(math.sin(current_time), math.cos(current_time) * 2, 0)
-
-        object:draw(shader,"triangles")
+    for _,object in pairs(scene.objects) do
+        --object:set_rotation(math.sin(current_time), math.cos(current_time) * 2, 0)
     end
+
+    scene:draw(shader)
 
     glfw.swap_buffers(window)
 end

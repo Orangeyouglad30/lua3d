@@ -28,6 +28,17 @@ local function split(inputstr, sep)
     return t
 end
 
+local function parse_face_token(face_token)
+    local position_text, uv_text, normal_text =
+        face_token:match("^([^/]*)/([^/]*)/([^/]*)$")
+
+    return {
+        position = tonumber(position_text),
+        uv = uv_text ~= "" and tonumber(uv_text) or nil,
+        normal = normal_text ~= "" and tonumber(normal_text) or nil
+    }
+end
+
 local function add_vertex(vertices, position, color, normal, uv)
     vertices[#vertices + 1] = position[1]
     vertices[#vertices + 1] = position[2]
@@ -44,47 +55,6 @@ local function add_vertex(vertices, position, color, normal, uv)
     vertices[#vertices + 1] = uv[1]
     vertices[#vertices + 1] = uv[2]
 end
-
-local function add_face(vertices, indices, a, b, c, d, color)
-    -- The first vertex index for this face.
-    -- Indices are zero-based because OpenGL uses zero-based indices.
-    local base_index = #vertices / 11
-
-    local vec1 = Vector3d.new(b[1]-a[1],b[2]-a[2],b[3]-a[3])
-    local vec2 = Vector3d.new(c[1]-a[1],c[2]-a[2],c[3]-a[3])
-    local normal = vec2:Cross(vec1):Unit():flatten()
-
-    -- Add each face corner once.
-    add_vertex(vertices, a, color, normal, Vector2d.new(0,1):flatten())
-    add_vertex(vertices, b, color, normal, Vector2d.new(1,1):flatten())
-    add_vertex(vertices, c, color, normal, Vector2d.new(1,0):flatten())
-    add_vertex(vertices, d, color, normal, Vector2d.new(0,0):flatten())
-
-    -- Two triangles:
-    -- a, b, c
-    -- a, c, d
-    indices[#indices + 1] = base_index
-    indices[#indices + 1] = base_index + 1
-    indices[#indices + 1] = base_index + 2
-
-    indices[#indices + 1] = base_index
-    indices[#indices + 1] = base_index + 2
-    indices[#indices + 1] = base_index + 3
-end
-
---[[
-local function add_tri(vertices,indices,vi,vni,uvi,v1i,v2i,v3i,vn1i,vn2i,vn3i,uv1i,uv2i,uv3i)
-    local base_index = #vertices / 11
-
-    add_vertex(vertices, vi[tonumber(v1i)]:flatten(), Vector3d.Zero():flatten(), vni[tonumber(vn1i)]:flatten(), uvi[tonumber(uv1i)]:flatten())
-    add_vertex(vertices, vi[tonumber(v2i)]:flatten(), Vector3d.Zero():flatten(), vni[tonumber(vn2i)]:flatten(), uvi[tonumber(uv2i)]:flatten())
-    add_vertex(vertices, vi[tonumber(v3i)]:flatten(), Vector3d.Zero():flatten(), vni[tonumber(vn3i)]:flatten(), uvi[tonumber(uv3i)]:flatten())
-
-    indices[#indices + 1] = base_index
-    indices[#indices + 1] = base_index + 1
-    indices[#indices + 1] = base_index + 2
-end
-]]
 
 local function center_vertices(vertices)
     local min_x = math.huge
@@ -116,6 +86,65 @@ local function center_vertices(vertices)
     end
 end
 
+local function normalize_vertices(vertices, target_size)
+    target_size = target_size or 1.0
+
+    local min_x = math.huge
+    local min_y = math.huge
+    local min_z = math.huge
+
+    local max_x = -math.huge
+    local max_y = -math.huge
+    local max_z = -math.huge
+
+    for i = 1, #vertices, 11 do
+        min_x = math.min(min_x, vertices[i])
+        min_y = math.min(min_y, vertices[i + 1])
+        min_z = math.min(min_z, vertices[i + 2])
+
+        max_x = math.max(max_x, vertices[i])
+        max_y = math.max(max_y, vertices[i + 1])
+        max_z = math.max(max_z, vertices[i + 2])
+    end
+
+    local center_x = (min_x + max_x) / 2
+    local center_y = (min_y + max_y) / 2
+    local center_z = (min_z + max_z) / 2
+
+    local width = max_x - min_x
+    local height = max_y - min_y
+    local depth = max_z - min_z
+
+    local largest_dimension =
+        math.max(width, height, depth)
+
+    assert(
+        largest_dimension > 0,
+        "Cannot normalize a model with no size"
+    )
+
+    local scale =
+        target_size / largest_dimension
+
+    for i = 1, #vertices, 11 do
+        vertices[i] =
+            (vertices[i] - center_x) * scale
+
+        vertices[i + 1] =
+            (vertices[i + 1] - center_y) * scale
+
+        vertices[i + 2] =
+            (vertices[i + 2] - center_z) * scale
+    end
+end
+
+local function generate_uv(position)
+    return Vector2d.new(
+        position.x * 4.0,
+        position.z * 4.0
+    )
+end
+
 local function add_tri(
     vertices,
     indices,
@@ -135,16 +164,22 @@ local function add_tri(
     }
 
     for _, corner in ipairs(corners) do
-        local position_index = tonumber(corner[1])
-        local uv_index = tonumber(corner[2])
-        local normal_index = tonumber(corner[3])
+        local position =
+            positions[corner.position]
+
+        local normal =
+            normals[corner.normal]
+
+        local uv =
+            corner.uv and uvs[corner.uv]
+            or Vector2d.new(0, 0)
 
         add_vertex(
             vertices,
-            positions[position_index]:flatten(),
+            position:flatten(),
             {1, 1, 1},
-            normals[normal_index]:flatten(),
-            uvs[uv_index]:flatten()
+            normal:flatten(),
+            uv:flatten()
         )
     end
 
@@ -233,6 +268,8 @@ function Mesh.new(vertices, indices)
 end
 
 function Mesh.createFromObj(file_path)
+    print("Parsing OBJ <"..file_path..">")
+
     local file = assert(
         io.open(file_path, "r"),
         "Could not open OBJ file: " .. file_path
@@ -243,6 +280,8 @@ function Mesh.createFromObj(file_path)
     local verticesReference = {}
     local normalsReference = {}
     local uvsReference = {}
+
+    local lineI = 0
 
     for line in file:lines() do
         local tokens = {}
@@ -261,25 +300,34 @@ function Mesh.createFromObj(file_path)
             local face = {}
 
             for i = 2, #tokens do
-                local face_token = tokens[i]
-                local references = {}
+                local raw_face_token = tokens[i]
 
-                for value in face_token:gmatch("[^/]+") do
-                    references[#references + 1] = value
-                end
-
-                face[#face + 1] = references
+                face[#face + 1] = parse_face_token(raw_face_token)
             end
 
             for i = 2, #face - 1 do
-                add_tri(vertices, indices, verticesReference, normalsReference, uvsReference, face[1], face[i], face[i + 1])
+                add_tri(
+                    vertices,
+                    indices,
+                    verticesReference,
+                    normalsReference,
+                    uvsReference,
+                    face[1],
+                    face[i],
+                    face[i + 1]
+                )
             end
         end
+
+        lineI = lineI + 1
+        --print(lineI)
     end
 
     file:close()
 
-    center_vertices(vertices)
+    print("Completed Parsing OBJ <"..file_path.."> | Results: "..#verticesReference.." vertices, "..#uvsReference.." UVs, "..#normalsReference.." normals")
+
+    normalize_vertices(vertices)
 
     return Mesh.new(vertices,indices)
 end
