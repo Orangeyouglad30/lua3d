@@ -53,7 +53,7 @@ function Scene:update(dt)
     if not dt then return end
 end
 
-function Scene:draw(shader)
+function Scene:draw(shader,mode)
     if not shader then return end
 
     shader:use()
@@ -70,7 +70,7 @@ function Scene:draw(shader)
     )
 
     for _, object in pairs(self.objects) do
-        object:draw(shader,"triangles")
+        object:draw(shader,mode)
     end
 end
 

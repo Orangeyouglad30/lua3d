@@ -53,6 +53,9 @@ function Object3d:draw(shader,mode)
     
     self.material:apply(shader)
 
+    self.mesh:draw(mode)
+
+    --[[
     gl.bind_vertex_array(self.mesh.vao)
 
     gl.draw_elements(
@@ -63,6 +66,7 @@ function Object3d:draw(shader,mode)
     )
 
     gl.unbind_vertex_array()
+    ]]
 end
 
 return Object3d

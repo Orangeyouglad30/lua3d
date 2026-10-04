@@ -1,192 +1,9 @@
 local gl = require("moongl")
 local Vector3d = require("math/vector3d")
 local Vector2d = require("math/vector2d")
+local Common = require("engine/common")
 
 local Mesh = {}
-
-local function dump(o)
-   if type(o) == 'table' then
-      local s = '{ '
-      for k,v in pairs(o) do
-         if type(k) ~= 'number' then k = '"'..k..'"' end
-         s = s .. '['..k..'] = ' .. dump(v) .. ','
-      end
-      return s .. '} '
-   else
-      return tostring(o)
-   end
-end
-
-local function split(inputstr, sep)
-    if sep == nil then
-        sep = "%s" -- Defaults to whitespace
-    end
-    local t = {}
-    for str in string.gmatch(inputstr, "([^" .. sep .. "]+)") do
-        table.insert(t, str)
-    end
-    return t
-end
-
-local function parse_face_token(face_token)
-    local position_text, uv_text, normal_text =
-        face_token:match("^([^/]*)/([^/]*)/([^/]*)$")
-
-    return {
-        position = tonumber(position_text),
-        uv = uv_text ~= "" and tonumber(uv_text) or nil,
-        normal = normal_text ~= "" and tonumber(normal_text) or nil
-    }
-end
-
-local function add_vertex(vertices, position, color, normal, uv)
-    vertices[#vertices + 1] = position[1]
-    vertices[#vertices + 1] = position[2]
-    vertices[#vertices + 1] = position[3]
-
-    vertices[#vertices + 1] = color[1]
-    vertices[#vertices + 1] = color[2]
-    vertices[#vertices + 1] = color[3]
-
-    vertices[#vertices + 1] = normal[1]
-    vertices[#vertices + 1] = normal[2]
-    vertices[#vertices + 1] = normal[3]
-
-    vertices[#vertices + 1] = uv[1]
-    vertices[#vertices + 1] = uv[2]
-end
-
-local function center_vertices(vertices)
-    local min_x = math.huge
-    local min_y = math.huge
-    local min_z = math.huge
-
-    local max_x = -math.huge
-    local max_y = -math.huge
-    local max_z = -math.huge
-
-    for i = 1, #vertices, 11 do
-        min_x = math.min(min_x, vertices[i])
-        min_y = math.min(min_y, vertices[i + 1])
-        min_z = math.min(min_z, vertices[i + 2])
-
-        max_x = math.max(max_x, vertices[i])
-        max_y = math.max(max_y, vertices[i + 1])
-        max_z = math.max(max_z, vertices[i + 2])
-    end
-
-    local center_x = (min_x + max_x) / 2
-    local center_y = (min_y + max_y) / 2
-    local center_z = (min_z + max_z) / 2
-
-    for i = 1, #vertices, 11 do
-        vertices[i] = vertices[i] - center_x
-        vertices[i + 1] = vertices[i + 1] - center_y
-        vertices[i + 2] = vertices[i + 2] - center_z
-    end
-end
-
-local function normalize_vertices(vertices, target_size)
-    target_size = target_size or 1.0
-
-    local min_x = math.huge
-    local min_y = math.huge
-    local min_z = math.huge
-
-    local max_x = -math.huge
-    local max_y = -math.huge
-    local max_z = -math.huge
-
-    for i = 1, #vertices, 11 do
-        min_x = math.min(min_x, vertices[i])
-        min_y = math.min(min_y, vertices[i + 1])
-        min_z = math.min(min_z, vertices[i + 2])
-
-        max_x = math.max(max_x, vertices[i])
-        max_y = math.max(max_y, vertices[i + 1])
-        max_z = math.max(max_z, vertices[i + 2])
-    end
-
-    local center_x = (min_x + max_x) / 2
-    local center_y = (min_y + max_y) / 2
-    local center_z = (min_z + max_z) / 2
-
-    local width = max_x - min_x
-    local height = max_y - min_y
-    local depth = max_z - min_z
-
-    local largest_dimension =
-        math.max(width, height, depth)
-
-    assert(
-        largest_dimension > 0,
-        "Cannot normalize a model with no size"
-    )
-
-    local scale =
-        target_size / largest_dimension
-
-    for i = 1, #vertices, 11 do
-        vertices[i] =
-            (vertices[i] - center_x) * scale
-
-        vertices[i + 1] =
-            (vertices[i + 1] - center_y) * scale
-
-        vertices[i + 2] =
-            (vertices[i + 2] - center_z) * scale
-    end
-end
-
-local function generate_uv(position)
-    return Vector2d.new(
-        position.x * 4.0,
-        position.z * 4.0
-    )
-end
-
-local function add_tri(
-    vertices,
-    indices,
-    positions,
-    normals,
-    uvs,
-    corner_a,
-    corner_b,
-    corner_c
-)
-    local base_index = #vertices / 11
-
-    local corners = {
-        corner_a,
-        corner_b,
-        corner_c
-    }
-
-    for _, corner in ipairs(corners) do
-        local position =
-            positions[corner.position]
-
-        local normal =
-            normals[corner.normal]
-
-        local uv =
-            corner.uv and uvs[corner.uv]
-            or Vector2d.new(0, 0)
-
-        add_vertex(
-            vertices,
-            position:flatten(),
-            {1, 1, 1},
-            normal:flatten(),
-            uv:flatten()
-        )
-    end
-
-    indices[#indices + 1] = base_index
-    indices[#indices + 1] = base_index + 1
-    indices[#indices + 1] = base_index + 2
-end
 
 function Mesh.new(vertices, indices)
     local self = {}
@@ -267,7 +84,7 @@ function Mesh.new(vertices, indices)
     return self
 end
 
-function Mesh.createFromObj(file_path)
+function Mesh.fromOBJ(file_path)
     print("Parsing OBJ <"..file_path..">")
 
     local file = assert(
@@ -302,11 +119,11 @@ function Mesh.createFromObj(file_path)
             for i = 2, #tokens do
                 local raw_face_token = tokens[i]
 
-                face[#face + 1] = parse_face_token(raw_face_token)
+                face[#face + 1] = Common.parse_face_token(raw_face_token)
             end
 
             for i = 2, #face - 1 do
-                add_tri(
+                Common.add_tri(
                     vertices,
                     indices,
                     verticesReference,
@@ -327,7 +144,7 @@ function Mesh.createFromObj(file_path)
 
     print("Completed Parsing OBJ <"..file_path.."> | Results: "..#verticesReference.." vertices, "..#uvsReference.." UVs, "..#normalsReference.." normals")
 
-    normalize_vertices(vertices)
+    Common.normalize_vertices(vertices)
 
     return Mesh.new(vertices,indices)
 end

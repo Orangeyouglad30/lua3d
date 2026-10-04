@@ -26,17 +26,14 @@ local Textures = require("engine/textures")
 local Materials = require("engine/materials")
 local Common = require("math/common")
 local Scene = require("engine/scene")
+local Model = require("engine/model")
 
 --Constants
 local move_speed = 3.0
 local turn_speed = 1.0
 
-local mouse_locked = true
-local simulation_paused = false
-local first_mouse_event = true
-local previous_mouse_x = 0
-local previous_mouse_y = 0
-local escape_was_down = false
+local window_width = 1280
+local window_height = 720
 
 print("Creating scene...")
 
@@ -47,6 +44,13 @@ local window
 local cam
 local previous_time = 0
 
+local mouse_locked = true
+local simulation_paused = false
+local first_mouse_event = true
+local previous_mouse_x = 0
+local previous_mouse_y = 0
+local escape_was_down = false
+
 local function createGLFWWindow()
     glfw.window_hint("context version major", 3)
     glfw.window_hint("context version minor", 3)
@@ -55,7 +59,7 @@ local function createGLFWWindow()
 
     print("Creating window...")
 
-    window = glfw.create_window(800, 800, "Lua Engine")
+    window = glfw.create_window(window_width, window_height, "Lua Engine")
 
     assert(window, "Failed to create window")
 
@@ -74,7 +78,7 @@ local function createGLFWWindow()
     gl.enable("depth test")
     gl.clear_depth(1.0)
 
-    gl.viewport(0, 0, 800, 800)
+    gl.viewport(0, 0, window_width, window_height)
 
     glfw.set_window_size_callback(window, function(_, width, height)
         gl.viewport(0, 0, width, height)
@@ -145,19 +149,21 @@ local shader = Shader.new(
 print("Positioning camera...")
 
 scene.camera:set_position(0,0,5)
+scene.camera:set_aspect_ratio(window_width/window_height)
 
 print("Creating objects and meshes...")
 
-local monkeyMesh = Mesh.createFromObj("assets/models/blender_monkey.obj")
-local ironManMesh = Mesh.createFromObj("assets/models/IronMan.obj")
-local cubeObjMesh = Mesh.createFromObj("assets/models/cube.obj")
-local humanMesh = Mesh.createFromObj("assets/models/FinalBaseMesh.obj")
+local ironManModel = Model.fromOBJ("assets/models/IronMan.obj")
+local monkeyMesh = Mesh.fromOBJ("assets/models/blender_monkey.obj")
+local ironManMesh = Mesh.fromOBJ("assets/models/IronMan.obj")
+local cubeObjMesh = Mesh.fromOBJ("assets/models/cube.obj")
+local humanMesh = Mesh.fromOBJ("assets/models/FinalBaseMesh.obj")
 
 local leftCube = Object3d.new(monkeyMesh,Materials.Ice)
 leftCube:set_position(-3,0,0)
 scene:add("left",leftCube)
 
-local rightCube = Object3d.new(ironManMesh,Materials.Crate)
+local rightCube = Object3d.new(ironManModel,Materials.Crate)
 rightCube:set_position(3,0,0)
 rightCube:set_scale(1,1,1)
 scene:add("right",rightCube)
@@ -287,7 +293,7 @@ while not glfw.window_should_close(window) do
         --object:set_rotation(math.sin(current_time), math.cos(current_time) * 2, 0)
     end
 
-    scene:draw(shader)
+    scene:draw(shader,"triangles")
 
     glfw.swap_buffers(window)
 end
