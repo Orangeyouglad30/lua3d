@@ -10,6 +10,11 @@ function Mesh.new(vertices, indices)
 
     self.vertex_count = #vertices / (3 + 3 + 3 + 2)
 
+    local min_x,min_y,min_z,max_x,max_y,max_z = Common.get_vertices_bounds(vertices)
+
+    self.min_bounds = Vector3d.new(min_x,min_y,min_z)
+    self.max_bounds = Vector3d.new(max_x,max_y,max_z)
+
     self.vao = gl.new_vertex_array()
     gl.bind_vertex_array(self.vao)
 
@@ -85,7 +90,11 @@ function Mesh.new(vertices, indices)
 end
 
 function Mesh.fromOBJ(file_path)
-    print("Parsing OBJ <"..file_path..">")
+    if not file_path then return end
+
+    print("Creating Mesh from OBJ <"..file_path..">")
+
+    local start = os.clock()
 
     local file = assert(
         io.open(file_path, "r"),
@@ -97,8 +106,8 @@ function Mesh.fromOBJ(file_path)
     local verticesReference = {}
     local normalsReference = {}
     local uvsReference = {}
-
-    local lineI = 0
+    
+    local min_x,min_y,min_z,max_x,max_y,max_z = math.huge,math.huge,math.huge,-math.huge,-math.huge,-math.huge --bounds of the total model
 
     for line in file:lines() do
         local tokens = {}
@@ -108,6 +117,15 @@ function Mesh.fromOBJ(file_path)
         end
 
         if tokens[1] == "v" then
+            --grab the bounding box size of the model through the vertices
+            min_x = math.min(min_x, tonumber(tokens[2]))
+            min_y = math.min(min_y, tonumber(tokens[3]))
+            min_z = math.min(min_z, tonumber(tokens[4]))
+
+            max_x = math.max(max_x, tonumber(tokens[2]))
+            max_y = math.max(max_y, tonumber(tokens[3]))
+            max_z = math.max(max_z, tonumber(tokens[4]))
+
             verticesReference[#verticesReference+1] = Vector3d.new(tonumber(tokens[2]),tonumber(tokens[3]),tonumber(tokens[4]))
         elseif tokens[1] == "vt" then
             uvsReference[#uvsReference+1] = Vector2d.new(tonumber(tokens[2]),tonumber(tokens[3]))
@@ -135,21 +153,18 @@ function Mesh.fromOBJ(file_path)
                 )
             end
         end
-
-        lineI = lineI + 1
-        --print(lineI)
     end
 
     file:close()
 
-    print("Completed Parsing OBJ <"..file_path.."> | Results: "..#verticesReference.." vertices, "..#uvsReference.." UVs, "..#normalsReference.." normals")
+    print("Completed Parsing Mesh from OBJ <"..file_path.."> in "..os.clock()-start.." seconds | Results: "..#verticesReference.." vertices, "..#uvsReference.." UVs, "..#normalsReference.." normals")
 
-    Common.normalize_vertices(vertices)
+    Common.squish_vertices(vertices,1.0,min_x,min_y,min_z,max_x,max_y,max_z)
 
     return Mesh.new(vertices,indices)
 end
 
-function Mesh:draw(mode)
+function Mesh:draw(shader,mode)
     gl.bind_vertex_array(self.vao)
 
     gl.draw_elements(

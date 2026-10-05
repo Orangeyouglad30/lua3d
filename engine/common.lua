@@ -9,9 +9,24 @@ function Common.dump(o)
       local s = '{ '
       for k,v in pairs(o) do
          if type(k) ~= 'number' then k = '"'..k..'"' end
-         s = s .. '['..k..'] = ' .. dump(v) .. ','
+         s = s .. '['..k..'] = ' .. Common.dump(v) .. ','
       end
       return s .. '} '
+   else
+      return tostring(o)
+   end
+end
+
+function Common.dumpDepth(o,depth)
+    depth = depth or ""
+
+    if type(o) == 'table' then
+      local s = '{ \n'
+      for k,v in pairs(o) do
+         if type(k) ~= 'number' then k = '"'..k..'"' end
+         s = s .. depth..'['..k..'] = ' .. Common.dumpDepth(v,depth.."  ") .. ',\n'
+      end
+      return s .. depth..'} '
    else
       return tostring(o)
    end
@@ -37,6 +52,31 @@ function Common.parse_face_token(face_token)
         uv = uv_text ~= "" and tonumber(uv_text) or nil,
         normal = normal_text ~= "" and tonumber(normal_text) or nil
     }
+end
+
+function Common.get_directory(filepath)
+    -- Convert Windows separators to Lua-friendly separators
+    filepath = filepath:gsub("\\", "/")
+
+    -- Everything before the final slash
+    return filepath:match("^(.*)/") or "."
+end
+
+function Common.resolve_relative_path(base_file, relative_path)
+    relative_path = relative_path:gsub("\\", "/")
+
+    -- Already absolute: examples include C:/... or /...
+    if relative_path:match("^%a:/") or relative_path:sub(1, 1) == "/" then
+        return relative_path
+    end
+
+    local base_directory = Common.get_directory(base_file)
+
+    if base_directory == "." then
+        return relative_path
+    end
+
+    return base_directory .. "/" .. relative_path
 end
 
 function Common.add_vertex(vertices, position, color, normal, uv)

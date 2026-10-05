@@ -21,7 +21,11 @@ function Vector2d.new(x,y)
 end
 
 function Vector2d.Zero()
-    return Vector2d.new(0,0,0)
+    return Vector2d.new(0,0)
+end
+
+function Vector2d.One()
+    return Vector2d.new(1,1)
 end
 
 --Methods

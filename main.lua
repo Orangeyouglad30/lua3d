@@ -76,6 +76,8 @@ local function createGLFWWindow()
     gl.init()
 
     gl.enable("depth test")
+    gl.enable("cull face")
+    gl.cull_face("back")
     gl.clear_depth(1.0)
 
     gl.viewport(0, 0, window_width, window_height)
@@ -155,9 +157,9 @@ print("Creating objects and meshes...")
 
 local ironManModel = Model.fromOBJ("assets/models/IronMan.obj")
 local monkeyMesh = Mesh.fromOBJ("assets/models/blender_monkey.obj")
-local ironManMesh = Mesh.fromOBJ("assets/models/IronMan.obj")
-local cubeObjMesh = Mesh.fromOBJ("assets/models/cube.obj")
-local humanMesh = Mesh.fromOBJ("assets/models/FinalBaseMesh.obj")
+--local ironManMesh = Mesh.fromOBJ("assets/models/IronMan.obj")
+--local cubeObjMesh = Mesh.fromOBJ("assets/models/cube.obj")
+--local humanMesh = Mesh.fromOBJ("assets/models/FinalBaseMesh.obj")
 
 local leftCube = Object3d.new(monkeyMesh,Materials.Ice)
 leftCube:set_position(-3,0,0)
@@ -173,11 +175,20 @@ middleCube:set_position(0,0,-3)
 middleCube:set_scale(1,1,1)
 scene:add("middle",middleCube)
 
+for i=1,10 do
+    for j=1,10 do
+        local newModel = Object3d.new(ironManModel)
+        newModel:set_position(i*3,0,j*3)
+        scene:add("IronMan"..i*10+j,newModel)
+    end
+end
+
 print("Entering render loop...")
 
-local fpsUpdatePeriodic = 2000
+local fpsUpdateEvery = 1
+local lastUpdate = 0
 local frames = 0
-local fpsSmoothing = 0.001
+local fpsSmoothing = 1
 local FPS = 0
 
 while not glfw.window_should_close(window) do
@@ -215,10 +226,6 @@ while not glfw.window_should_close(window) do
     frames = frames + 1
 
     FPS = Common.lerp(FPS,1/dt,fpsSmoothing)
-
-    if frames%fpsUpdatePeriodic == 0 then
-        print("FPS: "..math.floor(FPS))
-    end
 
     scene:update(dt)
 
@@ -290,10 +297,18 @@ while not glfw.window_should_close(window) do
     gl.clear("color","depth")
 
     for _,object in pairs(scene.objects) do
-        --object:set_rotation(math.sin(current_time), math.cos(current_time) * 2, 0)
+        object:set_rotation(math.sin(current_time), math.cos(current_time) * 2, 0)
     end
 
-    scene:draw(shader,"triangles")
+    local total_objects,culled_objects,total_meshes_drawn = scene:draw(shader,"triangles")
+
+    if current_time > lastUpdate then
+        lastUpdate = lastUpdate + fpsUpdateEvery
+        print("FPS: "..math.floor(FPS))
+        print("Objects: "..total_objects-culled_objects.." + "..culled_objects.." / "..total_objects)
+        --print("Culled Objects: "..culled_objects)
+        print("Total Meshes Drawn: "..total_meshes_drawn)
+    end
 
     glfw.swap_buffers(window)
 end

@@ -19,6 +19,8 @@ function Object3d.new(mesh,material)
     self.scale = Vector3d.new(1,1,1)
     self.mesh = mesh
     self.material = material
+    self.min_bounds = mesh.min_bounds
+    self.max_bounds = mesh.max_bounds
 
     return self
 end
@@ -45,28 +47,22 @@ function Object3d:get_model()
     return  Transform.translation(self.position.x,self.position.y,self.position.z) * Transform.rotation_y(self.rotation.y) * Transform.rotation_x(self.rotation.x) * Transform.rotation_z(self.rotation.z) * Transform.scale(self.scale.x,self.scale.y,self.scale.z)
 end
 
-function Object3d:draw(shader,mode)
+function Object3d:draw(shader, mode)
     shader:set_matrix(
-            "model",
-            self:get_model()
-    )
-    
-    self.material:apply(shader)
-
-    self.mesh:draw(mode)
-
-    --[[
-    gl.bind_vertex_array(self.mesh.vao)
-
-    gl.draw_elements(
-        mode,
-        self.mesh.index_count,
-        "uint",
-        0
+        "model",
+        self:get_model()
     )
 
-    gl.unbind_vertex_array()
-    ]]
+    local meshes = 1
+
+    if self.mesh.parts then
+        meshes = self.mesh:draw(shader, mode)
+    else
+        self.material:apply(shader)
+        self.mesh:draw(shader, mode)
+    end
+
+    return meshes
 end
 
 return Object3d

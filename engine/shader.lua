@@ -1,16 +1,17 @@
 local gl = require("moongl")
 
 local Shader = {}
+Shader.__index = Shader
 
 function Shader.new(vertex_path, fragment_path)
-    local self = {}
+    local self = setmetatable({},Shader)
 
     self.program = gl.make_program(
         "vertex", vertex_path,
         "fragment", fragment_path
     )
 
-    setmetatable(self, { __index = Shader })
+    self.uniforms = {}
 
     return self
 end
@@ -20,7 +21,12 @@ function Shader:use()
 end
 
 function Shader:uniform_location(name)
-    return gl.get_uniform_location(self.program, name)
+    if self.uniforms[name] == nil then
+        self.uniforms[name] =
+            gl.get_uniform_location(self.program, name)
+    end
+
+    return self.uniforms[name]
 end
 
 function Shader:set_float(name, value)
@@ -75,7 +81,7 @@ function Shader:set_lighting(lighting)
     )
 
     gl.uniform(
-        self:uniform_location("lightAmbient"),
+        self:uniform_location("ambientLightColor"),
         "float",
         lighting.ambient_color.x,
         lighting.ambient_color.y,

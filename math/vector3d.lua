@@ -25,6 +25,10 @@ function Vector3d.Zero()
     return Vector3d.new(0,0,0)
 end
 
+function Vector3d.One()
+    return Vector3d.new(1,1,1)
+end
+
 --Methods
 
 function Vector3d:Magnitude()
@@ -59,6 +63,24 @@ end
 
 function Vector3d.__tostring(self)
     return "<"..self.x..", "..self.y..", "..self.z..">"
+end
+
+function Vector3d.__add(self,other)
+    if not isVector(other) then return end
+
+    return Vector3d.new(self.x+other.x,self.y+other.y,self.z+other.z)
+end
+
+function Vector3d.__sub(self,other)
+    if not isVector(other) then return end
+
+    return Vector3d.new(self.x-other.x,self.y-other.y,self.z-other.z)
+end
+
+function Vector3d.__mul(self,other)
+    if type(other) ~= "number" then return end
+
+    return Vector3d.new(self.x*other,self.y*other,self.z*other)
 end
 
 return Vector3d

@@ -29,3 +29,10 @@ Clone the repository:
 
 ```powershell
 git clone https://github.com/Orangeyouglad30/lua3d.git
+```
+
+Run the .ps1 script
+
+```powershell
+.\run.ps1
+```
