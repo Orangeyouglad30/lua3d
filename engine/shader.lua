@@ -6,7 +6,7 @@ Shader.__index = Shader
 function Shader.new(vertex_path, fragment_path)
     local self = setmetatable({},Shader)
 
-    self.program = gl.make_program(
+    self.program,self.vertex_shader,self.fragment_shader = gl.make_program(
         "vertex", vertex_path,
         "fragment", fragment_path
     )
@@ -14,6 +14,14 @@ function Shader.new(vertex_path, fragment_path)
     self.uniforms = {}
 
     return self
+end
+
+function Shader:destroy()
+    if self.destroyed then return end
+
+    gl.clean_program(self.program,self.vertex_shader,self.fragment_shader)
+
+    self.destroyed = true
 end
 
 function Shader:use()

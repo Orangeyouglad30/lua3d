@@ -54,50 +54,14 @@ function Scene:update(dt)
     if not dt then return end
 end
 
-function Scene:draw(shader,mode)
-    if not shader then return end
+function Scene:destroy()
+    print("Destroying scene...")
 
-    shader:use()
-
-    shader:set_lighting(self.light)
-
-    local projection = self.camera:get_projection()
-    local view = self.camera:get_view()
-    local view_projection = projection * view
-
-    local frustum = Frustum.from_matrix(view_projection)
-
-    shader:set_matrix("projection", projection)
-    
-    shader:set_matrix("view", view)
-
-    shader:set_vector3(
-        "viewPosition",
-        self.camera.position
-    )
-
-    local culled_objects = 0
-    local total_objects = 1
-    local total_meshes_drawn = 0
-
-    for _, object in pairs(self.objects) do
-        local largest_scale = math.max(object.scale.x,object.scale.y,object.scale.z)
-        local object_radius = 1--math.max(object.max_bounds.x-object.min_bounds.x,object.max_bounds.y-object.min_bounds.y,object.max_bounds.z-object.min_bounds.z)
-
-        local radius = largest_scale * object_radius
-
-        local distance = (self.camera.position - object.position):Magnitude()
-
-        if distance < self.camera.far_distance + radius and frustum:contains_sphere(object.position,radius) then
-            local meshes_drawn = object:draw(shader,mode)
-            total_meshes_drawn = total_meshes_drawn + meshes_drawn
-        else
-            culled_objects = culled_objects + 1
-        end
-        total_objects = total_objects + 1
+    for objectName,object in pairs(self.objects) do
+        object:destroy()
     end
 
-    return total_objects,culled_objects,total_meshes_drawn
+    print("Scene destroyed.")
 end
 
 return Scene

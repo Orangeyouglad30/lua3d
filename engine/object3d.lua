@@ -27,6 +27,14 @@ end
 
 --Methods
 
+function Object3d:destroy()
+    if self.destroyed then return end
+
+    self.mesh:destroy()
+
+    self.destroyed = true
+end
+
 function Object3d:set_rotation(x,y,z)
     self.rotation = Vector3d.new(x,y,z)
 end

@@ -180,6 +180,16 @@ function Model.fromOBJ(file_path)
     return Model.new(parts,Vector3d.new(min_x,min_y,min_z),Vector3d.new(max_x,max_y,max_z))
 end
 
+function Model:destroy()
+    if self.destroyed then return end
+
+    for _,part in pairs(self.parts) do
+        part.mesh:destroy()
+    end
+
+    self.destroyed = true
+end
+
 function Model:draw(shader,mode)
     local meshesDrawn = 0
 

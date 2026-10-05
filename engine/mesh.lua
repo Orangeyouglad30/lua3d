@@ -14,6 +14,7 @@ function Mesh.new(vertices, indices)
 
     self.min_bounds = Vector3d.new(min_x,min_y,min_z)
     self.max_bounds = Vector3d.new(max_x,max_y,max_z)
+    self.destroyed = false
 
     self.vao = gl.new_vertex_array()
     gl.bind_vertex_array(self.vao)
@@ -162,6 +163,15 @@ function Mesh.fromOBJ(file_path)
     Common.squish_vertices(vertices,1.0,min_x,min_y,min_z,max_x,max_y,max_z)
 
     return Mesh.new(vertices,indices)
+end
+
+function Mesh:destroy()
+    if self.destroyed then return end
+
+    gl.delete_vertex_arrays(self.vao)
+    gl.delete_buffers(self.vbo, self.ebo)
+
+    self.destroyed = true
 end
 
 function Mesh:draw(shader,mode)

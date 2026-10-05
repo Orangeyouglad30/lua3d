@@ -27,6 +27,7 @@ local Materials = require("engine/materials")
 local Common = require("math/common")
 local Scene = require("engine/scene")
 local Model = require("engine/model")
+local Renderer = require("engine/renderer")
 
 --Constants
 local move_speed = 3.0
@@ -143,10 +144,7 @@ Materials.load()
 
 print("Creating shader program...")
 
-local shader = Shader.new(
-    "shaders/basic.vert",
-    "shaders/basic.frag"
-)
+local renderer = Renderer.new()
 
 print("Positioning camera...")
 
@@ -185,7 +183,7 @@ end
 
 print("Entering render loop...")
 
-local fpsUpdateEvery = 1
+local fpsUpdateEvery = 0.01
 local lastUpdate = 0
 local frames = 0
 local fpsSmoothing = 1
@@ -276,20 +274,9 @@ while not glfw.window_should_close(window) do
     local right_x = math.cos(yaw)
     local right_z = -math.sin(yaw)
 
-    local movement_x =
-        (forward_x * forward_input + right_x * strafe_input)
-        * dt
-        * move_speed
-
-    local movement_z =
-        (forward_z * forward_input + right_z * strafe_input)
-        * dt
-        * move_speed
-
-    local movement_y = 
-        (vertical_input)
-        * dt
-        * move_speed
+    local movement_x = (forward_x * forward_input + right_x * strafe_input) * dt * move_speed
+    local movement_z = (forward_z * forward_input + right_z * strafe_input) * dt * move_speed
+    local movement_y = vertical_input * dt * move_speed
 
     scene.camera:move(movement_x, movement_y, movement_z)
 
@@ -300,19 +287,20 @@ while not glfw.window_should_close(window) do
         object:set_rotation(math.sin(current_time), math.cos(current_time) * 2, 0)
     end
 
-    local total_objects,culled_objects,total_meshes_drawn = scene:draw(shader,"triangles")
+    local total_objects,culled_objects,total_meshes_drawn = renderer:draw_scene(scene,"triangles")
 
     if current_time > lastUpdate then
         lastUpdate = lastUpdate + fpsUpdateEvery
         print("FPS: "..math.floor(FPS))
         print("Objects: "..total_objects-culled_objects.." + "..culled_objects.." / "..total_objects)
-        --print("Culled Objects: "..culled_objects)
         print("Total Meshes Drawn: "..total_meshes_drawn)
     end
 
     glfw.swap_buffers(window)
 end
 
+scene:destroy()
+renderer:destroy()
 glfw.destroy_window(window)
 
 print("Program ended.")

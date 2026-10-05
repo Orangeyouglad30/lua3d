@@ -14,6 +14,17 @@ function Light.new()
     return self
 end
 
+function Light.newPointLight()
+    local self = setmetatable({},Light)
+
+    self.position = Vector3d.Zero()
+    self.intensity = 1
+    self.color = Vector3d.new(1,1,1)
+    self.ambient_color = Vector3d.new(0.15,0.15,0.15)
+
+    return self
+end
+
 function Light:set_direction(newDirection)
     self.direction = newDirection
 end

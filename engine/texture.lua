@@ -41,6 +41,14 @@ function Texture.new(filepath)
     return self
 end
 
+function Texture:destroy()
+    if self.destroyed then return end
+
+    gl.delete_textures(self.handle)
+
+    self.destroyed = true
+end
+
 function Texture:bind(texture_unit)
     gl.active_texture(texture_unit)
     gl.bind_texture("2d", self.handle)
