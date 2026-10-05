@@ -24,11 +24,14 @@ function Scene.new()
     self.camera = Camera.new(field_of_view,aspect_ratio,near_distance,far_distance)
 
     --lighting
-    self.light = Light.new()
+    self.lights = {}
 
-    self.light:set_direction(Vector3d.new(0,-1,-1):Unit())
-    self.light:set_color(Vector3d.new(1,1,1))
-    self.light:set_intensity(1)
+    self.global_light = Light.newGlobalLight()
+    self.global_light:set_direction(Vector3d.new(0, -1, -1):Unit())
+    self.global_light:set_color(Vector3d.new(1, 1, 1))
+    self.global_light:set_intensity(1)
+
+    self.lights = {}
 
     return self
 end
@@ -37,7 +40,11 @@ function Scene:add(name,object)
     if not name then return end
     if not object then return end
 
-    self.objects[name] = object
+    if type(object) == "table" and object.__type and object.__type == "Light" then
+        self.lights[name] = object
+    else
+        self.objects[name] = object
+    end
 end
 
 function Scene:remove(name)

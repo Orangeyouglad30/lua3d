@@ -40,6 +40,8 @@ function Object3d:set_rotation(x,y,z)
 end
 
 function Object3d:set_position(x,y,z)
+    if type(x)=="table" then self.position = x return end --if just a vector3d is passed through then set that vector equal to position
+
     self.position = Vector3d.new(x,y,z)
 end
 

@@ -151,9 +151,22 @@ print("Positioning camera...")
 scene.camera:set_position(0,0,5)
 scene.camera:set_aspect_ratio(window_width/window_height)
 
-print("Creating objects and meshes...")
+print("Creating objects, lights, and meshes...")
 
-local ironManModel = Model.fromOBJ("assets/models/IronMan.obj")
+local newPointLight = Light.newPointLight()
+newPointLight:set_color(Vector3d.new(1,0,0))
+newPointLight:set_position(Vector3d.new(1,0,0))
+newPointLight:set_intensity(24)
+scene:add("pointLight1",newPointLight)
+
+local newPointLight2 = Light.newPointLight()
+newPointLight2:set_color(Vector3d.new(0,1,0))
+newPointLight2:set_position(Vector3d.new(1,0,0))
+newPointLight2:set_intensity(48)
+scene:add("pointLight2",newPointLight2)
+
+local sphereMesh = Mesh.fromOBJ("assets/models/sphere.obj")
+--local ironManModel = Model.fromOBJ("assets/models/IronMan.obj")
 local monkeyMesh = Mesh.fromOBJ("assets/models/blender_monkey.obj")
 --local ironManMesh = Mesh.fromOBJ("assets/models/IronMan.obj")
 --local cubeObjMesh = Mesh.fromOBJ("assets/models/cube.obj")
@@ -163,7 +176,7 @@ local leftCube = Object3d.new(monkeyMesh,Materials.Ice)
 leftCube:set_position(-3,0,0)
 scene:add("left",leftCube)
 
-local rightCube = Object3d.new(ironManModel,Materials.Crate)
+local rightCube = Object3d.new(sphereMesh,Materials.Crate)
 rightCube:set_position(3,0,0)
 rightCube:set_scale(1,1,1)
 scene:add("right",rightCube)
@@ -173,17 +186,20 @@ middleCube:set_position(0,0,-3)
 middleCube:set_scale(1,1,1)
 scene:add("middle",middleCube)
 
-for i=1,10 do
-    for j=1,10 do
-        local newModel = Object3d.new(ironManModel)
-        newModel:set_position(i*3,0,j*3)
-        scene:add("IronMan"..i*10+j,newModel)
+for i=1,5 do
+    for j=1,5 do
+        for k=1,5 do
+            local newModel = Object3d.new(sphereMesh)
+            newModel:set_position((i)-3,(j)-3,(k)-3)
+            scene:add("Sphere"..i*25+j*5+k,newModel)
+        end
+        
     end
 end
 
 print("Entering render loop...")
 
-local fpsUpdateEvery = 0.01
+local fpsUpdateEvery = 0.5
 local lastUpdate = 0
 local frames = 0
 local fpsSmoothing = 1
@@ -223,7 +239,7 @@ while not glfw.window_should_close(window) do
 
     frames = frames + 1
 
-    FPS = Common.lerp(FPS,1/dt,fpsSmoothing)
+    FPS = Common.lerp(FPS,1/dt,fpsSmoothing * dt)
 
     scene:update(dt)
 
@@ -287,6 +303,12 @@ while not glfw.window_should_close(window) do
         object:set_rotation(math.sin(current_time), math.cos(current_time) * 2, 0)
     end
 
+    local lightPos = Vector3d.new(1*math.sin(current_time),1*math.cos(current_time),1*math.cos(current_time))
+    --print(lightPos)
+    scene.lights["pointLight1"]:set_position(lightPos)
+    scene.objects["middle"]:set_position(lightPos)
+    --scene.lights["pointLight2"]:set_position(Vector3d.new(1*math.sin(current_time/3),1*math.cos(current_time),1*math.cos(current_time/2)))
+
     local total_objects,culled_objects,total_meshes_drawn = renderer:draw_scene(scene,"triangles")
 
     if current_time > lastUpdate then
@@ -294,6 +316,7 @@ while not glfw.window_should_close(window) do
         print("FPS: "..math.floor(FPS))
         print("Objects: "..total_objects-culled_objects.." + "..culled_objects.." / "..total_objects)
         print("Total Meshes Drawn: "..total_meshes_drawn)
+        print("Camera Position: "..scene.camera.position.x..", "..scene.camera.position.y..", "..scene.camera.position.z)
     end
 
     glfw.swap_buffers(window)

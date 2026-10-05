@@ -71,7 +71,53 @@ function Shader:set_int(name, value)
     gl.uniform(location, "int", value)
 end
 
-function Shader:set_lighting(lighting)
+function Shader:set_bool(name,value)
+    local location = self:uniform_location(name)
+    gl.uniform(location, "bool",value)
+end
+
+function Shader:set_point_lights(lights)
+    local i = 1
+    for lightName, light in pairs(lights) do
+        local shaderI = i-1
+        local prefix = "pointLights["..shaderI.."]."
+        i=i+1
+
+        self:set_vector3(
+            prefix.."position",
+            light.position
+        )
+
+        self:set_vector3(
+            prefix.."color",
+            light.color
+        )
+
+        self:set_float(
+            prefix.."intensity",
+            light.intensity
+        )
+
+        self:set_float(
+            prefix.."constantAttenuation",
+            light.constant_attenuation
+        )
+
+        self:set_float(
+            prefix.."linearAttenuation",
+            light.linear_attenuation
+        )
+
+        self:set_float(
+            prefix.."quadraticAttenuation",
+            light.quadratic_attenuation
+        )
+    end
+
+    self:set_int("pointLightCount",i-1)
+end
+
+function Shader:set_lighting(lighting,pointlights)
     gl.uniform(
         self:uniform_location("lightDirection"),
         "float",
@@ -101,6 +147,9 @@ function Shader:set_lighting(lighting)
         "float",
         lighting.intensity
     )
+    if pointlights then
+        self:set_point_lights(pointlights)
+    end
 end
 
 return Shader
