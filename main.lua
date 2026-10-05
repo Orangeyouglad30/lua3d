@@ -166,8 +166,9 @@ newPointLight2:set_intensity(48)
 scene:add("pointLight2",newPointLight2)
 
 local sphereMesh = Mesh.fromOBJ("assets/models/sphere.obj")
---local ironManModel = Model.fromOBJ("assets/models/IronMan.obj")
+local ironManModel = Model.fromOBJ("assets/models/IronMan.obj")
 local monkeyMesh = Mesh.fromOBJ("assets/models/blender_monkey.obj")
+local planeMesh = Mesh.fromOBJ("assets/models/plane.obj")
 --local ironManMesh = Mesh.fromOBJ("assets/models/IronMan.obj")
 --local cubeObjMesh = Mesh.fromOBJ("assets/models/cube.obj")
 --local humanMesh = Mesh.fromOBJ("assets/models/FinalBaseMesh.obj")
@@ -185,6 +186,20 @@ local middleCube = Object3d.new(monkeyMesh,Materials.Crate)
 middleCube:set_position(0,0,-3)
 middleCube:set_scale(1,1,1)
 scene:add("middle",middleCube)
+
+local plane = Object3d.new(planeMesh,Materials.Ice)
+plane:set_position(0,0,-3)
+plane:set_rotation(0,math.rad(180),0)
+plane:set_scale(10,5,1)
+scene:add("plane",plane)
+
+for i=1,10 do
+    for j=1,10 do
+        local newModel = Object3d.new(ironManModel)
+        newModel:set_position(Vector3d.new(i,0,j))
+        scene:add("IronMan"..tostring(i*10+j),newModel)
+    end
+end
 
 for i=1,5 do
     for j=1,5 do
@@ -299,8 +314,11 @@ while not glfw.window_should_close(window) do
     gl.clear_color(0.1, 0.1, 0.15, 1.0)
     gl.clear("color","depth")
 
-    for _,object in pairs(scene.objects) do
-        object:set_rotation(math.sin(current_time), math.cos(current_time) * 2, 0)
+    for name,object in pairs(scene.objects) do
+        if name ~= "plane" then
+            
+        end
+        --object:set_rotation(math.sin(current_time), math.cos(current_time) * 2, 0)
     end
 
     local lightPos = Vector3d.new(1*math.sin(current_time),1*math.cos(current_time),1*math.cos(current_time))

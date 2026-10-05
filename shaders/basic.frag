@@ -119,5 +119,5 @@ void main()
     vec3 specular_color = lightColor * specular_strength * lightIntensity * specularStrength * specularColor;
 
     //diffuse + ambient + specular light
-    finalColor = diffuse_color + vec4(totalSpecular * specular_color,1);
+    finalColor = diffuse_color + vec4(specular_color + totalSpecular * specularColor,1);
 }

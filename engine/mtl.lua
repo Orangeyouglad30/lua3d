@@ -48,7 +48,7 @@ function MTL.fromFile(file_path)
                 ["specularColor"] = Vector3d.One(),
                 ["diffuseColor"] = Vector3d.One(),
                 ["shininess"] = 0,
-                ["specularStrength"] = 0,
+                ["specularStrength"] = 1,
                 ["diffuseTexture"] = nil,
             }
         elseif tokens[1] == "Ka" then   
