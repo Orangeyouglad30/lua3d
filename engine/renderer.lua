@@ -25,7 +25,7 @@ function Renderer:draw_scene(scene,mode)
     if not self.shader then return end
 
     self.shader:use()
-
+    
     self.shader:set_lighting(scene.global_light,scene.lights)
 
     local projection = scene.camera:get_projection()

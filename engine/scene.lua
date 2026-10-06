@@ -4,6 +4,7 @@ local Light = require("engine/light")
 local Vector3d = require("math/vector3d")
 local Vector2d = require("math/vector2d")
 local Frustum = require("engine/frustum")
+local Line = require("engine/line")
 
 local Scene = {}
 Scene.__index = Scene
@@ -27,11 +28,13 @@ function Scene.new()
     self.lights = {}
 
     self.global_light = Light.newGlobalLight()
-    self.global_light:set_direction(Vector3d.new(0, -1, -1):Unit())
+    self.global_light:set_direction(Vector3d.new(-1, -1, -1):Unit())
     self.global_light:set_color(Vector3d.new(1, 1, 1))
     self.global_light:set_intensity(1)
 
     self.lights = {}
+    self.lines = {}
+    self.billboards = {}
 
     return self
 end

@@ -7,7 +7,7 @@ Texture.__index = Texture
 function Texture.new(filepath)
     local self = setmetatable({}, Texture)
 
-    local image, width, height = mi.load(filepath, "rgb")
+    local image, width, height = mi.load(filepath, "rgba")
 
     assert(image, "Failed to load texture: " .. filepath)
 
@@ -23,8 +23,8 @@ function Texture.new(filepath)
     gl.texture_image(
         "2d",
         0,
-        "rgb",
-        "rgb",
+        "rgba",
+        "rgba",
         "ubyte",
         image,
         width,
@@ -52,6 +52,10 @@ end
 function Texture:bind(texture_unit)
     gl.active_texture(texture_unit)
     gl.bind_texture("2d", self.handle)
+end
+
+function Texture.__tostring(self)
+    return "Texture <"..self.filepath..">"
 end
 
 return Texture

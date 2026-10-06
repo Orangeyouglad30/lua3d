@@ -33,7 +33,24 @@ struct PointLight
     float quadraticAttenuation;
 };
 
+struct SpotLight
+{
+    vec3 position;
+    vec3 color;
+    vec3 direction;
+    float intensity;
+    float maxAngle;
+
+    float constantAttenuation;
+    float linearAttenuation;
+    float quadraticAttenuation;
+};
+
+const int MAX_SPOT_LIGHTS = 8;
 const int MAX_POINT_LIGHTS = 8;
+
+uniform int spotLightCount;
+uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
 
 uniform int pointLightCount;
 uniform PointLight pointLights[MAX_POINT_LIGHTS];
@@ -48,10 +65,7 @@ void main()
 
     for (int i = 0; i < MAX_POINT_LIGHTS; i++) //loop through all pointlights in the scene
     {
-        if (i >= pointLightCount) //if the count reaches the limit then just disregard all other point lights
-        {
-            break;
-        }
+        if (i >= pointLightCount){break;} //if the count reaches the limit then just disregard all other point lights
 
         PointLight light = pointLights[i]; //set the point light 
 
@@ -91,6 +105,56 @@ void main()
         totalDiffuse += diffuse;
         totalSpecular += specular;
     }
+
+    for (int i = 0; i < MAX_SPOT_LIGHTS; i++) //loop through all pointlights in the scene
+    {
+        if (i >= spotLightCount){break;} //if the count reaches the limit then just disregard all other point lights
+
+        SpotLight light = spotLights[i]; //set the point light 
+
+        vec3 toLight = light.position - fragmentPosition; //direction of fragment to light
+        float distanceToLight = length(toLight); //magnitude of toLight
+        vec3 lightDirection = normalize(toLight); //make unit vector
+
+        vec3 toFragment = normalize(fragmentPosition - light.position);
+        float angleCos = dot(toFragment, normalize(light.direction));
+        float cutoffCos = cos(light.maxAngle);
+
+        if (angleCos <= cutoffCos) continue; //skip this light if its outside of the spotlight's cone
+
+        float diffuseAmount = max(dot(normal, lightDirection), 0.0); //diffuse multiplier
+
+        float attenuation = 1.0 / //calculate the light dropoff to that point
+            (
+                light.constantAttenuation +
+                light.linearAttenuation * distanceToLight +
+                light.quadraticAttenuation *
+                    distanceToLight *
+                    distanceToLight
+            );
+
+        //calculate the total diffuse 
+        vec3 diffuse = light.color * light.intensity * diffuseAmount * attenuation;
+
+        //the vector halfway between the light direction and the view direction
+        vec3 halfwayDirection = normalize(lightDirection + viewDirection);
+
+        //calculate the light hitting the camera given the reflection of the light into it
+        float specularAmount = pow(max(dot(normal, halfwayDirection), 0.0),shininess);
+
+        //total specular color
+        vec3 specular =
+            light.color *
+            specularAmount *
+            light.intensity *
+            specularStrength *
+            attenuation;
+
+        //add to count
+        totalDiffuse += diffuse;
+        totalSpecular += specular;
+    }
+
     //light direction
     vec3 direction = normalize(-lightDirection);
 

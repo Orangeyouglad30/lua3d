@@ -9,5 +9,11 @@ v -0.5 -0.5  0.0
 # Vertex Normals (Pointing straight forward out of the screen)
 vn  0.0  0.0  -1.0
 
+# Vertex Textures
+vt 0.0 1.0
+vt 1.0 1.0
+vt 1.0 0.0
+vt 0.0 0.0
+
 # Face (Single quad mapped to the normal vector index)
-f 1//1 2//1 3//1 4//1
+f 1/1/1 2/2/1 3/3/1 4/4/1

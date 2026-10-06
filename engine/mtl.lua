@@ -62,7 +62,7 @@ function MTL.fromFile(file_path)
         elseif tokens[1] == "Ns"then
             currentMaterialInfo.shininess = tokens[2]
         elseif tokens[1] == "illum" then
-            
+            --currentMaterialInfo.specularStrength = tokens[2]
         end
 
     end

@@ -10,24 +10,10 @@ package.cpath =
 print("Running project...")
 
 --Libraries
+print("Requiring basic libraries...")
+
 local gl = require("moongl")
 local glfw = require("moonglfw")
-local Mesh = require("engine/mesh")
-local Shader = require("engine/shader")
-local Transform = require("engine/transform")
-local Matrix = require("math/matrix")
-local Camera = require("engine/camera")
-local Vector3d = require("math/vector3d")
-local Vector2d = require("math/vector2d")
-local Light = require("engine/light")
-local Object3d = require("engine/object3d")
-local Material = require("engine/material")
-local Textures = require("engine/textures")
-local Materials = require("engine/materials")
-local Common = require("math/common")
-local Scene = require("engine/scene")
-local Model = require("engine/model")
-local Renderer = require("engine/renderer")
 
 --Constants
 local move_speed = 3.0
@@ -35,10 +21,6 @@ local turn_speed = 1.0
 
 local window_width = 1280
 local window_height = 720
-
-print("Creating scene...")
-
-local scene = Scene.new()
 
 --Dynamics
 local window
@@ -52,37 +34,7 @@ local previous_mouse_x = 0
 local previous_mouse_y = 0
 local escape_was_down = false
 
-local function createGLFWWindow()
-    glfw.window_hint("context version major", 3)
-    glfw.window_hint("context version minor", 3)
-    glfw.window_hint("opengl profile", "core")
-    glfw.window_hint("depth bits",24)
-
-    print("Creating window...")
-
-    window = glfw.create_window(window_width, window_height, "Lua Engine")
-
-    assert(window, "Failed to create window")
-
-    glfw.make_context_current(window)
-
-    glfw.set_input_mode(
-        window,
-        "cursor",
-        "disabled"
-    )
-
-    glfw.swap_interval(0)
-
-    gl.init()
-
-    gl.enable("depth test")
-    gl.enable("cull face")
-    gl.cull_face("back")
-    gl.clear_depth(1.0)
-
-    gl.viewport(0, 0, window_width, window_height)
-
+local function setGLFWCallbacks(scene)
     glfw.set_window_size_callback(window, function(_, width, height)
         gl.viewport(0, 0, width, height)
         scene.camera:set_aspect_ratio(width/height)
@@ -136,7 +88,64 @@ local function createGLFWWindow()
     )
 end
 
+local function createGLFWWindow()
+    glfw.window_hint("context version major", 3)
+    glfw.window_hint("context version minor", 3)
+    glfw.window_hint("opengl profile", "core")
+    glfw.window_hint("depth bits",24)
+
+    print("Creating window...")
+
+    window = glfw.create_window(window_width, window_height, "Lua Engine")
+
+    assert(window, "Failed to create window")
+
+    glfw.make_context_current(window)
+
+    glfw.set_input_mode(
+        window,
+        "cursor",
+        "disabled"
+    )
+
+    glfw.swap_interval(0)
+
+    gl.init()
+
+    gl.enable("depth test")
+    gl.enable("cull face")
+    gl.cull_face("back")
+    gl.clear_depth(1.0)
+
+    gl.viewport(0, 0, window_width, window_height)
+end
+
 createGLFWWindow()
+
+print("Requiring engine libraries...")
+
+local Scene = require("engine/scene")
+local Mesh = require("engine/mesh")
+local Shader = require("engine/shader")
+local Transform = require("engine/transform")
+local Matrix = require("math/matrix")
+local Camera = require("engine/camera")
+local Vector3d = require("math/vector3d")
+local Vector2d = require("math/vector2d")
+local Light = require("engine/light")
+local Object3d = require("engine/object3d")
+local Material = require("engine/material")
+local Textures = require("engine/textures")
+local Materials = require("engine/materials")
+local Common = require("math/common")
+local Model = require("engine/model")
+local Renderer = require("engine/renderer")
+local DebugRenderer = require("engine/debugrenderer")
+
+print("Creating scene...")
+
+local scene = Scene.new()
+setGLFWCallbacks(scene)
 
 print("Creating materials...")
 
@@ -145,6 +154,7 @@ Materials.load()
 print("Creating shader program...")
 
 local renderer = Renderer.new()
+local debugrenderer = DebugRenderer.new()
 
 print("Positioning camera...")
 
@@ -163,21 +173,27 @@ local newPointLight2 = Light.newPointLight()
 newPointLight2:set_color(Vector3d.new(0,1,0))
 newPointLight2:set_position(Vector3d.new(1,0,0))
 newPointLight2:set_intensity(48)
-scene:add("pointLight2",newPointLight2)
+--scene:add("pointLight2",newPointLight2)
+
+local newSpotLight = Light.newSpotLight()
+newSpotLight:set_color(Vector3d.new(0,0,1))
+newSpotLight:set_direction(Vector3d.new(1,0,0))
+newSpotLight:set_intensity(24)
+scene:add("spotLight1",newSpotLight)
 
 local sphereMesh = Mesh.fromOBJ("assets/models/sphere.obj")
-local ironManModel = Model.fromOBJ("assets/models/IronMan.obj")
+--local ironManModel = Model.fromOBJ("assets/models/IronMan.obj")
 local monkeyMesh = Mesh.fromOBJ("assets/models/blender_monkey.obj")
 local planeMesh = Mesh.fromOBJ("assets/models/plane.obj")
 --local ironManMesh = Mesh.fromOBJ("assets/models/IronMan.obj")
 --local cubeObjMesh = Mesh.fromOBJ("assets/models/cube.obj")
 --local humanMesh = Mesh.fromOBJ("assets/models/FinalBaseMesh.obj")
 
-local leftCube = Object3d.new(monkeyMesh,Materials.Ice)
+local leftCube = Object3d.new(sphereMesh)
 leftCube:set_position(-3,0,0)
 scene:add("left",leftCube)
 
-local rightCube = Object3d.new(sphereMesh,Materials.Crate)
+local rightCube = Object3d.new(monkeyMesh,Materials.Crate)
 rightCube:set_position(3,0,0)
 rightCube:set_scale(1,1,1)
 scene:add("right",rightCube)
@@ -193,6 +209,7 @@ plane:set_rotation(0,math.rad(180),0)
 plane:set_scale(10,5,1)
 scene:add("plane",plane)
 
+--[[
 for i=1,10 do
     for j=1,10 do
         local newModel = Object3d.new(ironManModel)
@@ -200,6 +217,7 @@ for i=1,10 do
         scene:add("IronMan"..tostring(i*10+j),newModel)
     end
 end
+
 
 for i=1,5 do
     for j=1,5 do
@@ -211,6 +229,7 @@ for i=1,5 do
         
     end
 end
+]]
 
 print("Entering render loop...")
 
@@ -325,9 +344,11 @@ while not glfw.window_should_close(window) do
     --print(lightPos)
     scene.lights["pointLight1"]:set_position(lightPos)
     scene.objects["middle"]:set_position(lightPos)
+    scene.lights["spotLight1"]:set_direction(Vector3d.new(math.sin(current_time),0,math.cos(current_time)))
     --scene.lights["pointLight2"]:set_position(Vector3d.new(1*math.sin(current_time/3),1*math.cos(current_time),1*math.cos(current_time/2)))
 
     local total_objects,culled_objects,total_meshes_drawn = renderer:draw_scene(scene,"triangles")
+    debugrenderer:draw_lights(scene)
 
     if current_time > lastUpdate then
         lastUpdate = lastUpdate + fpsUpdateEvery

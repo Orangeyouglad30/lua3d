@@ -3,7 +3,7 @@ local gl = require("moongl")
 local Shader = {}
 Shader.__index = Shader
 
-function Shader.new(vertex_path, fragment_path)
+function Shader.new(vertex_path, fragment_path,shader_mode)
     local self = setmetatable({},Shader)
 
     self.program,self.vertex_shader,self.fragment_shader = gl.make_program(
@@ -12,6 +12,7 @@ function Shader.new(vertex_path, fragment_path)
     )
 
     self.uniforms = {}
+    self.shader_mode = shader_mode or "default"
 
     return self
 end
@@ -88,6 +89,8 @@ function Shader:set_point_lights(lights)
             light.position
         )
 
+        if self.shader_mode == "debug" then goto continue end
+
         self:set_vector3(
             prefix.."color",
             light.color
@@ -112,43 +115,119 @@ function Shader:set_point_lights(lights)
             prefix.."quadraticAttenuation",
             light.quadratic_attenuation
         )
+
+        ::continue::
     end
 
     self:set_int("pointLightCount",i-1)
 end
 
-function Shader:set_lighting(lighting,pointlights)
+function Shader:set_spot_lights(lights)
+    local i = 1
+    for lightName, light in pairs(lights) do
+        local shaderI = i-1
+        local prefix = "spotLights["..shaderI.."]."
+        i=i+1
+
+        self:set_vector3(
+            prefix.."direction",
+            light.direction
+        )
+
+        self:set_vector3(
+            prefix.."position",
+            light.position
+        )
+
+        if self.shader_mode == "debug" then goto continue end
+
+        self:set_float(
+            prefix.."maxAngle",
+            light.maxAngle
+        )
+
+        self:set_vector3(
+            prefix.."color",
+            light.color
+        )
+
+        self:set_float(
+            prefix.."intensity",
+            light.intensity
+        )
+
+        self:set_float(
+            prefix.."constantAttenuation",
+            light.constant_attenuation
+        )
+
+        self:set_float(
+            prefix.."linearAttenuation",
+            light.linear_attenuation
+        )
+
+        self:set_float(
+            prefix.."quadraticAttenuation",
+            light.quadratic_attenuation
+        )
+
+        ::continue::
+    end
+
+    self:set_int("spotLightCount",i-1)
+end
+
+function Shader:set_lighting(global_lighting,lights)
+    if self.shader_mode == "debug" then goto skip_non_debug end
+
     gl.uniform(
         self:uniform_location("lightDirection"),
         "float",
-        lighting.direction.x,
-        lighting.direction.y,
-        lighting.direction.z
+        global_lighting.direction.x,
+        global_lighting.direction.y,
+        global_lighting.direction.z
     )
 
     gl.uniform(
         self:uniform_location("lightColor"),
         "float",
-        lighting.color.x,
-        lighting.color.y,
-        lighting.color.z
+        global_lighting.color.x,
+        global_lighting.color.y,
+        global_lighting.color.z
     )
 
     gl.uniform(
         self:uniform_location("ambientLightColor"),
         "float",
-        lighting.ambient_color.x,
-        lighting.ambient_color.y,
-        lighting.ambient_color.z
+        global_lighting.ambient_color.x,
+        global_lighting.ambient_color.y,
+        global_lighting.ambient_color.z
     )
 
     gl.uniform(
         self:uniform_location("lightIntensity"),
         "float",
-        lighting.intensity
+        global_lighting.intensity
     )
-    if pointlights then
-        self:set_point_lights(pointlights)
+
+    ::skip_non_debug::
+
+    local pointLights, spotLights = {},{}
+
+    for lightName,light in pairs(lights) do
+        if light._type == "point" then
+            pointLights[lightName] = light
+        elseif light._type == "spot" then
+            spotLights[lightName] = light
+        end
+    end
+
+    if pointLights then
+        self:set_point_lights(pointLights)
+    end
+
+    if spotLights then
+        self:set_spot_lights(spotLights)
     end
 end
 
