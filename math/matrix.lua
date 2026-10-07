@@ -138,4 +138,27 @@ function Matrix:flatten()
     return flattenedMatrix
 end
 
+function Matrix:normal_matrix()
+    if self.columns ~= 4 or self.rows ~= 4 then return end
+
+    local m = self._matrix
+
+    local a,b,c = m[1][1],m[1][2],m[1][3]
+    local d,e,f = m[2][1],m[2][2],m[2][3]
+    local g,h,i = m[3][1],m[3][2],m[3][3]
+
+    local determinant =
+        a * (e * i - f * h) -
+        b * (d * i - f * g) +
+        c * (d * h - e * g)
+
+    assert(math.abs(determinant) > 1e-8,"Model matrix cannot be inverted")
+
+    return Matrix.new({
+        {(e*i-f*h)/determinant,(f*g-d*i)/determinant,(d*h-e*g)/determinant},
+        {(c*h-b*i)/determinant,(a*i-c*g)/determinant,(b*g-a*h)/determinant},
+        {(b*f-c*e)/determinant,(c*d-a*f)/determinant,(a*e-b*d)/determinant}
+    })
+end
+
 return Matrix

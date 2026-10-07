@@ -15,11 +15,22 @@ function Engine.load()
     local monkeyObject = Lua3D.graphics.object3d.new(monkeyMesh)
     monkeyMesh.position = (Vector3d.new(0,0,0))
 
+    local ironManModel = Lua3D.graphics.model.fromOBJ("assets/models/IronMan.obj")
+    local ironManObject = Lua3D.graphics.object3d.new(ironManModel)
+    ironManObject:set_position(Vector3d.new(2,0,0))
+
+    local pointLight1 = Lua3D.graphics.light.newPointLight()
+    pointLight1:set_position(Vector3d.new(1,0,0))
+    pointLight1:set_intensity(10)
+    pointLight1:set_color(Vector3d.new(0,1,0))
+
+    newScene:add("pointLight1",pointLight1)
     newScene:add("Monkey",monkeyObject)
+    newScene:add("Iron Man",ironManObject)
 end
 
-local fpsUpdateEvery = 0.25
-local lastUpdate = 0
+local fpsUpdateEvery = 10
+local lastUpdate = fpsUpdateEvery
 local frames = 0
 local fpsSmoothing = 1
 local FPS = 0
@@ -27,7 +38,34 @@ local FPS = 0
 local CAMERA_SPEED = 3
 local SENSITIVITY = 20
 
+local DO_BENCHMARK = true
+local BENCHMARK_UNTIL = 5
+
+local strafe_movement = 0
+local forward_movement = 0
+local vertical_movement = 0
+
+Input.key_pressed:Connect(function(key)
+    if key=="w" then forward_movement = forward_movement + 1 end
+    if key=="s" then forward_movement = forward_movement - 1 end
+    if key=="a" then strafe_movement = strafe_movement - 1 end
+    if key=="d" then strafe_movement = strafe_movement + 1 end
+    if key=="space" then vertical_movement = vertical_movement + 1 end
+    if key=="left shift" then vertical_movement = vertical_movement - 1 end
+end)
+
+Input.key_released:Connect(function(key)
+    if key=="w" then forward_movement = forward_movement - 1 end
+    if key=="s" then forward_movement = forward_movement + 1 end
+    if key=="a" then strafe_movement = strafe_movement + 1 end
+    if key=="d" then strafe_movement = strafe_movement - 1 end
+    if key=="space" then vertical_movement = vertical_movement - 1 end
+    if key=="left shift" then vertical_movement = vertical_movement + 1 end
+end)
+
 function Engine.update(dt)
+    frames = frames + 1
+
     FPS = Lua3D.math.common.lerp(FPS,1/dt,fpsSmoothing * dt)
 
     if Engine.elapsed_time > lastUpdate then
@@ -35,23 +73,12 @@ function Engine.update(dt)
         print("FPS: "..math.floor(FPS))
     end
 
-    --newScene.objects["Monkey"].rotation = Lua3D.math.vector3d.new(math.sin(Engine.elapsed_time),math.cos(Engine.elapsed_time),2*math.sin(Engine.elapsed_time))
+    newScene.objects["Iron Man"]:set_rotation(Lua3D.math.vector3d.new(math.sin(Engine.elapsed_time),math.cos(Engine.elapsed_time),2*math.sin(Engine.elapsed_time)))
 
-    local strafe_movement = 0
-    local forward_movement = 0
-    local vertical_movement = 0
-
-    if Input:is_key_down("w") then forward_movement = forward_movement + 1 end
-    if Input:is_key_down("s") then forward_movement = forward_movement - 1 end
-
-    if Input:is_key_down("a") then strafe_movement = strafe_movement - 1 end
-    if Input:is_key_down("d") then strafe_movement = strafe_movement + 1 end
-
-    if Input:is_key_down("space") then vertical_movement = vertical_movement + 1 end
-    if Input:is_key_down("left shift") then vertical_movement = vertical_movement - 1 end
-
-    newScene.camera.CFrame = newScene.camera.CFrame * CFrame.new(0,0,-forward_movement*dt*CAMERA_SPEED) * CFrame.new(strafe_movement*dt*CAMERA_SPEED,0,0) * CFrame.new(0,vertical_movement*dt*CAMERA_SPEED,0)
-
+    if forward_movement~=0 or strafe_movement~=0 or vertical_movement~=0 then
+        newScene.camera.CFrame = newScene.camera.CFrame * CFrame.new(0,0,-forward_movement*dt*CAMERA_SPEED) * CFrame.new(strafe_movement*dt*CAMERA_SPEED,0,0) * CFrame.new(0,vertical_movement*dt*CAMERA_SPEED,0)
+    end
+    
     if Input:is_mouse_button_down("left") then
         Input:lock_mouse()
     end
@@ -66,7 +93,12 @@ function Engine.update(dt)
 end
 
 function Engine.draw()
-    Engine:render_scene(newScene)
+    Engine:render_scene(newScene,true)
+
+    if Engine.elapsed_time > BENCHMARK_UNTIL and DO_BENCHMARK then
+        print("Total frames: "..frames)
+        Engine:stop()
+    end
 end
 
 Engine:start()

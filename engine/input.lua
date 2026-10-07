@@ -1,6 +1,7 @@
 --Libraries
 local glfw = require("moonglfw")
 local Vector2d = require("math/vector2d")
+local Signal = require("engine/signal")
 
 --Constants
 
@@ -27,11 +28,16 @@ function Input.new(window)
     self._mouse_scroll_delta = Vector2d.Zero()
     self._mouse_locked = false
 
+    self.key_pressed = Signal.new()
+    self.key_released = Signal.new()
+
     glfw.set_key_callback(window, function(win, key, scancode, action, shift, control, alt, super)
         if action == "press" then
             self._pressed_keys[key] = true
+            self.key_pressed:Fire(key)
         elseif action == "release" then
             self._pressed_keys[key] = false
+            self.key_released:Fire(key)
         end
     end)
 

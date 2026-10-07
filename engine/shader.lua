@@ -55,6 +55,18 @@ function Shader:set_matrix(name, matrix)
     )
 end
 
+function Shader:set_matrix3(name,matrix)
+    local location = self:uniform_location(name)
+
+    gl.uniform_matrix(
+        location,
+        "float",
+        "3x3",
+        true,
+        gl.flatten(matrix:flatten())
+    )
+end
+
 function Shader:set_vector3(name, vector)
     local location = self:uniform_location(name)
 

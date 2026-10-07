@@ -217,21 +217,21 @@ function Common.add_tri(
 
     for _, corner in ipairs(corners) do
         local position =
-            positions[corner.position]
+            {positions[corner.position*3-2],positions[corner.position*3-1],positions[corner.position*3]}
 
         local normal =
-            normals[corner.normal]
+            {normals[corner.normal*3-2],normals[corner.normal*3-1],normals[corner.normal*3]}
 
         local uv =
-            corner.uv and uvs[corner.uv]
-            or Vector2d.new(0, 0)
+            corner.uv and {uvs[corner.uv*2-1],uvs[corner.uv*2]}
+            or {0,0}--Vector2d.new(0, 0)
 
         Common.add_vertex(
             vertices,
-            position:flatten(),
+            position,--position:flatten(),
             {1, 1, 1},
-            normal:flatten(),
-            uv:flatten()
+            normal,--normal:flatten(),
+            uv--uv:flatten()
         )
     end
 

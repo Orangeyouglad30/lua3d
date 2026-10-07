@@ -13,6 +13,7 @@ out vec3 fragmentNormal;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat3 normalMatrix;
 
 void main()
 {
@@ -24,5 +25,6 @@ void main()
     vec4 world_position = model * vec4(position, 1.0);
     fragmentPosition = world_position.xyz;
 
-    fragmentNormal = mat3(transpose(inverse(model))) * normal;
+    fragmentNormal = normalMatrix * normal;
+    //fragmentNormal = mat3(transpose(inverse(model))) * normal;
 }

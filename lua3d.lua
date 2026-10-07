@@ -28,6 +28,7 @@ local Textures = require("engine/textures")
 
 --Dynamics
 Lua3D.window = nil
+
 local w_width = 0
 local w_height = 0
 local initialized = false
@@ -76,24 +77,35 @@ local function startRenderLoop(self)
 
     local previousMousePosition = Lua3D.math.vector2d.new(0,0)
 
+    self._previous_time = glfw.get_time()
+
     while not glfw.window_should_close(Lua3D.window) do
+        if not self.running then break end
+
         glfw.poll_events()
 
-        local dt = glfw.get_time() - self.elapsed_time
-        self.elapsed_time = glfw.get_time()
+        local dt = glfw.get_time() - self._previous_time
+        self._previous_time = glfw.get_time()
+        self.elapsed_time = self.elapsed_time + dt
 
         self.system.input._mouse_position_delta = previousMousePosition - self.system.input._mouse_position
         previousMousePosition = self.system.input._mouse_position
 
         self.update(dt)
 
+        if not self.running then break end
+
         gl.clear_color(0.1,0.1,0.15,1)
         gl.clear("color","depth")
 
         self.draw()
 
+        if not self.running then break end
+
         glfw.swap_buffers(Lua3D.window)
     end
+
+    if not self.running then return end
 
     glfw.destroy_window(Lua3D.window)
 end
@@ -138,7 +150,10 @@ function Lua3D.initialize(window_width,window_height)
     local self = setmetatable({},Lua3D)
 
     self._renderer = Renderer.new()
+    self._debug_renderer = DebugRenderer.new()
     self.elapsed_time = 0
+    self._previous_time = 0
+    self.running = false
 
     --signals
     self.system.on_window_resize = Lua3D.system.signal.new()
@@ -171,11 +186,21 @@ end
 
 --Methods
 function Lua3D:start()
+    self.running = true
     startRenderLoop(self)
 end
 
-function Lua3D:render_scene(scene)
+function Lua3D:stop()
+    self.running = false
+    glfw.destroy_window(Lua3D.window)
+end
+
+function Lua3D:render_scene(scene,render_debug)
     self._renderer:draw_scene(scene,"triangles")
+
+    if render_debug then
+        self._debug_renderer:draw_lights(scene)
+    end
 end
 
 --Return

@@ -11,6 +11,7 @@ function Renderer.new()
         "shaders/basic.vert",
         "shaders/basic.frag"
     )
+    self.current_material = nil
 
     return self
 end
@@ -47,7 +48,7 @@ function Renderer:draw_scene(scene,mode)
     local total_objects = 1
     local total_meshes_drawn = 0
 
-    for _, object in pairs(scene.objects) do
+    for objectName, object in pairs(scene.objects) do
         local largest_scale = math.max(object.scale.x,object.scale.y,object.scale.z)
         local object_radius = 1--math.max(object.max_bounds.x-object.min_bounds.x,object.max_bounds.y-object.min_bounds.y,object.max_bounds.z-object.min_bounds.z)
 
@@ -56,8 +57,9 @@ function Renderer:draw_scene(scene,mode)
         local distance = (scene.camera.CFrame.position - object.position):Magnitude()
 
         if distance < scene.camera.far_distance + radius and frustum:contains_sphere(object.position,radius) then
-            local meshes_drawn = object:draw(self.shader,mode)
+            local meshes_drawn, material_drawn = object:draw(self.shader,mode,self.current_material)
             total_meshes_drawn = total_meshes_drawn + meshes_drawn
+            self.current_material = material_drawn
         else
             culled_objects = culled_objects + 1
         end

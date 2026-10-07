@@ -5,15 +5,21 @@ local Common = require("engine/common")
 
 local Mesh = {}
 
-function Mesh.new(vertices, indices)
+function Mesh.new(vertices, indices, min_bounds, max_bounds)
     local self = {}
 
     self.vertex_count = #vertices / (3 + 3 + 3 + 2)
 
-    local min_x,min_y,min_z,max_x,max_y,max_z = Common.get_vertices_bounds(vertices)
+    if not min_bounds and not max_bounds then
+        local min_x,min_y,min_z,max_x,max_y,max_z = Common.get_vertices_bounds(vertices)
 
-    self.min_bounds = Vector3d.new(min_x,min_y,min_z)
-    self.max_bounds = Vector3d.new(max_x,max_y,max_z)
+        self.min_bounds = Vector3d.new(min_x,min_y,min_z)
+        self.max_bounds = Vector3d.new(max_x,max_y,max_z)
+    else
+        self.min_bounds = min_bounds
+        self.max_bounds = max_bounds
+    end
+    
     self.destroyed = false
 
     self.vao = gl.new_vertex_array()
@@ -93,7 +99,9 @@ end
 function Mesh.fromOBJ(file_path)
     if not file_path then return end
 
-    print("Creating Mesh from OBJ <"..file_path..">")
+    --print("Creating Mesh from OBJ <"..file_path..">")
+
+    collectgarbage("collect")
 
     local start = os.clock()
 
@@ -107,32 +115,58 @@ function Mesh.fromOBJ(file_path)
     local verticesReference = {}
     local normalsReference = {}
     local uvsReference = {}
+
+    local vcursor = 1
+    local ncursor = 1
+    local uvcursor = 1
     
     local min_x,min_y,min_z,max_x,max_y,max_z = math.huge,math.huge,math.huge,-math.huge,-math.huge,-math.huge --bounds of the total model
 
     for line in file:lines() do
-        local tokens = {}
+        local prefix = line:sub(1,2)
 
-        for token in line:gmatch("%S+") do
-            tokens[#tokens + 1] = token
-        end
+        if prefix == "v " then
+            local x,y,z = line:match("^v%s+([^%s]+)%s+([^%s]+)%s+([^%s]+)")
+            x,y,z = tonumber(x),tonumber(y),tonumber(z)
 
-        if tokens[1] == "v" then
             --grab the bounding box size of the model through the vertices
-            min_x = math.min(min_x, tonumber(tokens[2]))
-            min_y = math.min(min_y, tonumber(tokens[3]))
-            min_z = math.min(min_z, tonumber(tokens[4]))
+            min_x = math.min(min_x, x)
+            min_y = math.min(min_y, y)
+            min_z = math.min(min_z, z)
 
-            max_x = math.max(max_x, tonumber(tokens[2]))
-            max_y = math.max(max_y, tonumber(tokens[3]))
-            max_z = math.max(max_z, tonumber(tokens[4]))
+            max_x = math.max(max_x, x)
+            max_y = math.max(max_y, y)
+            max_z = math.max(max_z, z)
 
-            verticesReference[#verticesReference+1] = Vector3d.new(tonumber(tokens[2]),tonumber(tokens[3]),tonumber(tokens[4]))
-        elseif tokens[1] == "vt" then
-            uvsReference[#uvsReference+1] = Vector2d.new(tonumber(tokens[2]),tonumber(tokens[3]))
-        elseif tokens[1] == "vn" then
-            normalsReference[#normalsReference+1] = Vector3d.new(tonumber(tokens[2]),tonumber(tokens[3]),tonumber(tokens[4]))
-        elseif tokens[1] == "f" then
+            verticesReference[vcursor] = x
+            verticesReference[vcursor+1] = y
+            verticesReference[vcursor+2] = z
+
+            vcursor = vcursor + 3
+        elseif prefix == "vt" then
+            local u,v = line:match("^vt%s+([^%s]+)%s+([^%s]+)")
+            u,v = tonumber(u),tonumber(v)
+
+            uvsReference[uvcursor] = u
+            uvsReference[uvcursor+1] = v
+
+            uvcursor = uvcursor + 2
+        elseif prefix == "vn" then
+            local x,y,z = line:match("^vn%s+([^%s]+)%s+([^%s]+)%s+([^%s]+)")
+            x,y,z = tonumber(x),tonumber(y),tonumber(z)
+
+            normalsReference[ncursor] = x
+            normalsReference[ncursor+1] = y
+            normalsReference[ncursor+2] = z
+
+            ncursor = ncursor + 3
+        elseif prefix == "f " then
+            local tokens = {}
+
+            for token in line:gmatch("%S+") do
+                tokens[#tokens + 1] = token
+            end
+
             local face = {}
 
             for i = 2, #tokens do
@@ -184,7 +218,7 @@ function Mesh:draw(shader,mode)
         0
     )
 
-    gl.unbind_vertex_array()
+    --gl.unbind_vertex_array()
 end
 
 return Mesh

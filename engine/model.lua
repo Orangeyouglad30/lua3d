@@ -21,7 +21,9 @@ end
 function Model.fromOBJ(file_path)
     if not file_path then return end
 
-    print("Creating Model from OBJ <"..file_path..">")
+    --print("Creating Model from OBJ <"..file_path..">")
+
+    collectgarbage("collect")
 
     local start = os.clock()
 
@@ -37,76 +39,86 @@ function Model.fromOBJ(file_path)
     local normalsReference = {} --all of the normals of the obj in order
     local uvsReference = {} --all of the uvs of the obj in order
 
+    --save positions of the last index in each reference table
+    local vcursor = 1
+    local ncursor = 1
+    local uvcursor = 1
+
     local mtllibPath --the path to the mtl file
     local min_x,min_y,min_z,max_x,max_y,max_z = math.huge,math.huge,math.huge,-math.huge,-math.huge,-math.huge --bounds of the total model
 
-    --first pass to grab every vertex, normal and uv
-    for line in file:lines() do
-        local tokens = {}
-
-        for token in line:gmatch("%S+") do
-            tokens[#tokens + 1] = token
-        end
-
-        if tokens[1] == "mtllib" then
-            --grab the mttlib path
-            mtllibPath = tokens[2]
-        elseif tokens[1] == "v" then
-            --grab the bounding box size of the model through the vertices
-            min_x = math.min(min_x, tonumber(tokens[2]))
-            min_y = math.min(min_y, tonumber(tokens[3]))
-            min_z = math.min(min_z, tonumber(tokens[4]))
-
-            max_x = math.max(max_x, tonumber(tokens[2]))
-            max_y = math.max(max_y, tonumber(tokens[3]))
-            max_z = math.max(max_z, tonumber(tokens[4]))
-
-            verticesReference[#verticesReference+1] = Vector3d.new(tonumber(tokens[2]),tonumber(tokens[3]),tonumber(tokens[4]))
-        elseif tokens[1] == "vt" then
-            uvsReference[#uvsReference+1] = Vector2d.new(tonumber(tokens[2]),tonumber(tokens[3]))
-        elseif tokens[1] == "vn" then
-            normalsReference[#normalsReference+1] = Vector3d.new(tonumber(tokens[2]),tonumber(tokens[3]),tonumber(tokens[4]))
-        end
-    end
-
-    file:close() --close file after first loop
-
-    --retrieve all of the materials and compile them from the specified .mtl file
     local modelMaterials = {} 
-    if mtllibPath then
-        --convert the mttlib path into a path that lua can use before trying to retrieve the library from the .mtl file
-        modelMaterials = MTL.fromFile(Common.resolve_relative_path(file_path,mtllibPath))
-    end
-
-    --create groups for each material
-    for materialName,materialInfo in pairs(modelMaterials) do
-        groups[materialName] = {
-            ["vertices"] = {},
-            ["indices"] = {},
-        }
-    end
-
-    --reopen file for second loop
-    file = assert(
-        io.open(file_path, "r"),
-        "Could not open OBJ file: " .. file_path
-    )
-
-    --declare the current material for use in second loop
     local currentMaterial = nil
     local faces = 0
 
-    --second pass to normalize vertices on faces as well as separate each part of the mesh
+    --first pass to grab every vertex, normal and uv
     for line in file:lines() do
-        local tokens = {}
+        local prefix = line:sub(1,2)
 
-        --turn the line into tokens
-        for token in line:gmatch("%S+") do
-            tokens[#tokens + 1] = token
-        end
+        if prefix == "mt" then
+            local tokens = {}
 
-        --if first line is usemtl then switch the current material over
-        if tokens[1] == "usemtl" then
+            for token in line:gmatch("%S+") do
+                tokens[#tokens + 1] = token
+            end
+
+            --grab the mttlib path
+            mtllibPath = tokens[2]
+
+            if mtllibPath then
+                --convert the mttlib path into a path that lua can use before trying to retrieve the library from the .mtl file
+                modelMaterials = MTL.fromFile(Common.resolve_relative_path(file_path,mtllibPath))
+
+                --create groups for each material
+                for materialName,materialInfo in pairs(modelMaterials) do
+                    groups[materialName] = {
+                        ["vertices"] = {},
+                        ["indices"] = {},
+                    }
+                end
+            end
+        elseif prefix == "v " then
+            local x,y,z = line:match("^v%s+([^%s]+)%s+([^%s]+)%s+([^%s]+)")
+            x,y,z = tonumber(x),tonumber(y),tonumber(z)
+
+            --grab the bounding box size of the model through the vertices
+            min_x = math.min(min_x, x)
+            min_y = math.min(min_y, y)
+            min_z = math.min(min_z, z)
+
+            max_x = math.max(max_x, x)
+            max_y = math.max(max_y, y)
+            max_z = math.max(max_z, z)
+
+            verticesReference[vcursor] = x
+            verticesReference[vcursor+1] = y
+            verticesReference[vcursor+2] = z
+
+            vcursor = vcursor + 3
+        elseif prefix == "vt" then
+            local u,v = line:match("^vt%s+([^%s]+)%s+([^%s]+)")
+            u,v = tonumber(u),tonumber(v)
+
+            uvsReference[uvcursor] = u
+            uvsReference[uvcursor+1] = v
+
+            uvcursor = uvcursor + 2
+        elseif prefix == "vn" then
+            local x,y,z = line:match("^vn%s+([^%s]+)%s+([^%s]+)%s+([^%s]+)")
+            x,y,z = tonumber(x),tonumber(y),tonumber(z)
+
+            normalsReference[ncursor] = x
+            normalsReference[ncursor+1] = y
+            normalsReference[ncursor+2] = z
+
+            ncursor = ncursor + 3
+        elseif prefix == "us" then
+            local tokens = {}
+
+            for token in line:gmatch("%S+") do
+                tokens[#tokens + 1] = token
+            end
+
             currentMaterial = tokens[2]
 
             --if the material that the line specifies isn't actually found then try to shorten it down after the colon
@@ -117,7 +129,13 @@ function Model.fromOBJ(file_path)
                     currentMaterial = shortened_name
                 end
             end
-        elseif tokens[1] == "f" then --if the token indicates that the line is a face
+        elseif prefix == "f " then --if the token indicates that the line is a face
+            local tokens = {}
+
+            for token in line:gmatch("%S+") do
+                tokens[#tokens + 1] = token
+            end
+
             local face = {}
 
             --parses through all of the tokens, could be more than 4 tokens depending on vertices of face (i.e. quads vs triangles)
@@ -148,7 +166,12 @@ function Model.fromOBJ(file_path)
         end
     end
 
-    file:close()
+    file:close() --close file after first loop
+
+    --print("Finished first pass in "..os.clock()-start.." seconds.")
+
+    local min_bounds = Vector3d.new(min_x,min_y,min_z)
+    local max_bounds = Vector3d.new(max_x,max_y,max_z)
 
     --loops through the groups and finishes up the vertices and indices into one mesh and material pair
     for materialName,groupInfo in pairs(groups) do
@@ -170,14 +193,14 @@ function Model.fromOBJ(file_path)
 
         --finally add the mesh material pair into the parts table
         table.insert(parts, {
-            mesh = Mesh.new(vertices, indices),
+            mesh = Mesh.new(vertices, indices,min_bounds,max_bounds),
             material = modelMaterials[materialName]
         })
     end
 
     print("Completed Parsing Model from OBJ <"..file_path.."> in "..os.clock()-start.." seconds | Results: "..#verticesReference.." vertices, "..#uvsReference.." UVs, "..#normalsReference.." normals, "..faces.." faces, "..#parts.." meshes")
 
-    return Model.new(parts,Vector3d.new(min_x,min_y,min_z),Vector3d.new(max_x,max_y,max_z))
+    return Model.new(parts,min_bounds,max_bounds)
 end
 
 function Model:destroy()
@@ -190,20 +213,23 @@ function Model:destroy()
     self.destroyed = true
 end
 
-function Model:draw(shader,mode)
+function Model:draw(shader,mode,current_material)
     local meshesDrawn = 0
+
+    local lastMaterial = current_material
 
     for _,partInfo in pairs(self.parts) do
         --print("Drawing mesh with material: "..partInfo.material)
-        if partInfo.material then
+        if partInfo.material and partInfo.material ~= lastMaterial then
             partInfo.material:apply(shader)
+            lastMaterial = partInfo.material
         end
         partInfo.mesh:draw(shader,mode)
 
         meshesDrawn = meshesDrawn + 1
     end
 
-    return meshesDrawn
+    return meshesDrawn, lastMaterial
 end
 
 return Model
