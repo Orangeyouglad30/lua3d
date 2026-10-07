@@ -5,7 +5,7 @@ Matrix.__type = "Matrix"
 local function isMatrix(matrix)
     if type(matrix) ~= "table" then return end
     if not matrix.__type then return end
-    if not matrix.__type == "Matrix" then return end
+    if matrix.__type ~= "Matrix" then return end
     return true
 end
 

@@ -40,7 +40,7 @@ function Renderer:draw_scene(scene,mode)
 
     self.shader:set_vector3(
         "viewPosition",
-        scene.camera.position
+        scene.camera.CFrame.position
     )
 
     local culled_objects = 0
@@ -53,7 +53,7 @@ function Renderer:draw_scene(scene,mode)
 
         local radius = largest_scale * object_radius
 
-        local distance = (scene.camera.position - object.position):Magnitude()
+        local distance = (scene.camera.CFrame.position - object.position):Magnitude()
 
         if distance < scene.camera.far_distance + radius and frustum:contains_sphere(object.position,radius) then
             local meshes_drawn = object:draw(self.shader,mode)

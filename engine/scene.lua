@@ -5,6 +5,9 @@ local Vector3d = require("math/vector3d")
 local Vector2d = require("math/vector2d")
 local Frustum = require("engine/frustum")
 local Line = require("engine/line")
+local Lua3D = require("lua3d")
+local glfw = require("moonglfw")
+local gl = require("moongl")
 
 local Scene = {}
 Scene.__index = Scene
@@ -18,11 +21,17 @@ function Scene.new()
     local far_distance = 30
     local camera_distance = 5
 
-    --objects
-    self.objects = {}
-
     --camera
     self.camera = Camera.new(field_of_view,aspect_ratio,near_distance,far_distance)
+
+    Lua3D.system.on_window_resize:Connect(function(width,height)
+        self.camera:set_aspect_ratio(width/height)
+    end)
+
+    self.camera:set_aspect_ratio(Lua3D.system.get_window_width()/Lua3D.system.get_window_height())
+
+    --objects
+    self.objects = {}
 
     --lighting
     self.lights = {}

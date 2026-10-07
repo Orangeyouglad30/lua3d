@@ -54,6 +54,18 @@ function Vector2d:flatten()
     return {self.x,self.y}
 end
 
+function Vector2d.__add(self,other)
+    if not isVector(other) then return end
+
+    return Vector2d.new(self.x+other.x,self.y+other.y)
+end
+
+function Vector2d.__sub(self,other)
+    if not isVector(other) then return end
+
+    return Vector2d.new(self.x-other.x,self.y-other.y)
+end
+
 function Vector2d.__tostring(self)
     return "<"..self.x..", "..self.y..">"
 end

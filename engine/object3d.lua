@@ -8,9 +8,8 @@ local Object3d = {}
 Object3d.__index = Object3d
 
 --Constructors
-
 function Object3d.new(mesh,material)
-    material = material or Materials.Crate
+    material = material or Materials.Ice
 
     local self = setmetatable({},Object3d)
 
