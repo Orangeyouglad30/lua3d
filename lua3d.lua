@@ -74,11 +74,16 @@ end
 local function startRenderLoop(self)
     self.load()
 
+    local previousMousePosition = Lua3D.math.vector2d.new(0,0)
+
     while not glfw.window_should_close(Lua3D.window) do
         glfw.poll_events()
 
         local dt = glfw.get_time() - self.elapsed_time
         self.elapsed_time = glfw.get_time()
+
+        self.system.input._mouse_position_delta = previousMousePosition - self.system.input._mouse_position
+        previousMousePosition = self.system.input._mouse_position
 
         self.update(dt)
 

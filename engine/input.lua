@@ -44,7 +44,7 @@ function Input.new(window)
     end)
 
     glfw.set_cursor_pos_callback(window, function(win, x, y)
-        self._mouse_position_delta = Vector2d.new(x,y) - self._mouse_position
+        --self._mouse_position_delta = Vector2d.new(x,y) - self._mouse_position
         self._mouse_position = Vector2d.new(x,y)
     end)
 
@@ -76,6 +76,10 @@ function Input:get_scroll_wheel_delta()
     return self._mouse_scroll_delta
 end
 
+function Input:is_mouse_locked()
+    return self._mouse_locked
+end
+
 function Input:lock_mouse()
     if self._mouse_locked then return end
 
@@ -84,6 +88,8 @@ function Input:lock_mouse()
         "cursor",
         "disabled"
     )
+
+    self._mouse_locked = true
 end
 
 function Input:unlock_mouse()
@@ -94,6 +100,8 @@ function Input:unlock_mouse()
         "cursor",
         "normal"
     )
+
+    self._mouse_locked = false
 end
 
 --Return
