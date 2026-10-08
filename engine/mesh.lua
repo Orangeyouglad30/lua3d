@@ -100,9 +100,7 @@ function Mesh.fromOBJ(file_path)
     if not file_path then return end
 
     --print("Creating Mesh from OBJ <"..file_path..">")
-
-    collectgarbage("collect")
-
+    
     local start = os.clock()
 
     local file = assert(

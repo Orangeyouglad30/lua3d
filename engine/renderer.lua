@@ -48,6 +48,9 @@ function Renderer:draw_scene(scene,mode)
     local total_objects = 1
     local total_meshes_drawn = 0
 
+    --temporary
+    self.current_material = nil
+
     for objectName, object in pairs(scene.objects) do
         local largest_scale = math.max(object.scale.x,object.scale.y,object.scale.z)
         local object_radius = 1--math.max(object.max_bounds.x-object.min_bounds.x,object.max_bounds.y-object.min_bounds.y,object.max_bounds.z-object.min_bounds.z)

@@ -27,7 +27,6 @@ struct PointLight
     vec3 position;
     vec3 color;
     float intensity;
-
     float constantAttenuation;
     float linearAttenuation;
     float quadraticAttenuation;
@@ -40,7 +39,6 @@ struct SpotLight
     vec3 direction;
     float intensity;
     float maxAngle;
-
     float constantAttenuation;
     float linearAttenuation;
     float quadraticAttenuation;
@@ -55,45 +53,78 @@ uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
 uniform int pointLightCount;
 uniform PointLight pointLights[MAX_POINT_LIGHTS];
 
+vec3 safe_normalize(vec3 value)
+{
+    float lengthValue = length(value);
+
+    if (lengthValue <= 0.0001) {
+        return vec3(0.0);
+    }
+
+    return value / lengthValue;
+}
+
+float calculate_specular(vec3 normal, vec3 lightDirection, vec3 viewDirection)
+{
+    vec3 halfwaySum = lightDirection + viewDirection;
+    float halfwayLength = length(halfwaySum);
+
+    if (halfwayLength <= 0.0001) {
+        return 0.0;
+    }
+
+    vec3 halfwayDirection = halfwaySum / halfwayLength;
+
+    return pow(
+        max(dot(normal, halfwayDirection), 0.0),
+        shininess
+    );
+}
+
 void main()
 {
-    vec3 totalDiffuse = vec3(0.0); //total diffuse color
-    vec3 totalSpecular = vec3(0.0); //total specular amount
+    vec3 normal = safe_normalize(fragmentNormal);
+    vec3 viewDirection = safe_normalize(viewPosition - fragmentPosition);
 
-    vec3 normal = normalize(fragmentNormal); //normal of the pixel being processed
-    vec3 viewDirection = normalize(viewPosition - fragmentPosition); //view direction of camera to pixel
+    vec3 totalDiffuse = vec3(0.0);
+    vec3 totalSpecular = vec3(0.0);
 
-    for (int i = 0; i < MAX_POINT_LIGHTS; i++) //loop through all pointlights in the scene
+    for (int i = 0; i < MAX_POINT_LIGHTS; i++)
     {
-        if (i >= pointLightCount){break;} //if the count reaches the limit then just disregard all other point lights
+        if (i >= pointLightCount) {
+            break;
+        }
 
-        PointLight light = pointLights[i]; //set the point light 
+        PointLight light = pointLights[i];
 
-        vec3 toLight = light.position - fragmentPosition; //direction of fragment to light
-        float distanceToLight = length(toLight); //magnitude of toLight
-        vec3 lightDirection = normalize(toLight); //make unit vector
+        vec3 toLight = light.position - fragmentPosition;
+        float distanceToLight = length(toLight);
+        vec3 pointDirection = safe_normalize(toLight);
 
-        float diffuseAmount = max(dot(normal, lightDirection), 0.0); //diffuse multiplier
+        float diffuseAmount = max(dot(normal, pointDirection), 0.0);
 
-        float attenuation = 1.0 / //calculate the light dropoff to that point
-            (
-                light.constantAttenuation +
-                light.linearAttenuation * distanceToLight +
-                light.quadraticAttenuation *
-                    distanceToLight *
-                    distanceToLight
+        float attenuation = 1.0 /
+        (
+            light.constantAttenuation +
+            light.linearAttenuation * distanceToLight +
+            light.quadraticAttenuation *
+            distanceToLight *
+            distanceToLight
+        );
+
+        vec3 diffuse =
+            light.color *
+            light.intensity *
+            diffuseAmount *
+            attenuation;
+
+        float specularAmount =
+            calculate_specular(
+                normal,
+                pointDirection,
+                viewDirection
             );
 
-        //calculate the total diffuse 
-        vec3 diffuse = light.color * light.intensity * diffuseAmount * attenuation;
-
-        //the vector halfway between the light direction and the view direction
-        vec3 halfwayDirection = normalize(lightDirection + viewDirection);
-
-        //calculate the light hitting the camera given the reflection of the light into it
-        float specularAmount = pow(max(dot(normal, halfwayDirection), 0.0),shininess);
-
-        //total specular color
         vec3 specular =
             light.color *
             specularAmount *
@@ -101,48 +132,62 @@ void main()
             specularStrength *
             attenuation;
 
-        //add to count
         totalDiffuse += diffuse;
         totalSpecular += specular;
     }
 
-    for (int i = 0; i < MAX_SPOT_LIGHTS; i++) //loop through all pointlights in the scene
+    for (int i = 0; i < MAX_SPOT_LIGHTS; i++)
     {
-        if (i >= spotLightCount){break;} //if the count reaches the limit then just disregard all other point lights
+        if (i >= spotLightCount) {
+            break;
+        }
 
-        SpotLight light = spotLights[i]; //set the point light 
+        SpotLight light = spotLights[i];
 
-        vec3 toLight = light.position - fragmentPosition; //direction of fragment to light
-        float distanceToLight = length(toLight); //magnitude of toLight
-        vec3 lightDirection = normalize(toLight); //make unit vector
+        vec3 toLight = light.position - fragmentPosition;
+        float distanceToLight = length(toLight);
+        vec3 spotDirection = safe_normalize(toLight);
 
-        vec3 toFragment = normalize(fragmentPosition - light.position);
-        float angleCos = dot(toFragment, normalize(light.direction));
+        vec3 toFragment =
+            safe_normalize(fragmentPosition - light.position);
+
+        vec3 normalizedLightDirection =
+            safe_normalize(light.direction);
+
+        float angleCos =
+            dot(toFragment, normalizedLightDirection);
+
         float cutoffCos = cos(light.maxAngle);
 
-        if (angleCos <= cutoffCos) continue; //skip this light if its outside of the spotlight's cone
+        if (angleCos <= cutoffCos) {
+            continue;
+        }
 
-        float diffuseAmount = max(dot(normal, lightDirection), 0.0); //diffuse multiplier
+        float diffuseAmount =
+            max(dot(normal, spotDirection), 0.0);
 
-        float attenuation = 1.0 / //calculate the light dropoff to that point
-            (
-                light.constantAttenuation +
-                light.linearAttenuation * distanceToLight +
-                light.quadraticAttenuation *
-                    distanceToLight *
-                    distanceToLight
+        float attenuation = 1.0 /
+        (
+            light.constantAttenuation +
+            light.linearAttenuation * distanceToLight +
+            light.quadraticAttenuation *
+            distanceToLight *
+            distanceToLight
+        );
+
+        vec3 diffuse =
+            light.color *
+            light.intensity *
+            diffuseAmount *
+            attenuation;
+
+        float specularAmount =
+            calculate_specular(
+                normal,
+                spotDirection,
+                viewDirection
             );
 
-        //calculate the total diffuse 
-        vec3 diffuse = light.color * light.intensity * diffuseAmount * attenuation;
-
-        //the vector halfway between the light direction and the view direction
-        vec3 halfwayDirection = normalize(lightDirection + viewDirection);
-
-        //calculate the light hitting the camera given the reflection of the light into it
-        float specularAmount = pow(max(dot(normal, halfwayDirection), 0.0),shininess);
-
-        //total specular color
         vec3 specular =
             light.color *
             specularAmount *
@@ -150,38 +195,54 @@ void main()
             specularStrength *
             attenuation;
 
-        //add to count
         totalDiffuse += diffuse;
         totalSpecular += specular;
     }
 
-    //light direction
-    vec3 direction = normalize(-lightDirection);
+    vec3 globalDirection =
+        safe_normalize(-lightDirection);
 
-    //ambient light
-    vec3 ambient_light = ambientLightColor * ambientColor; //multiplies global illumination color by the color of the material
+    float globalDiffuseAmount =
+        max(dot(normal, globalDirection), 0.0);
 
-    //diffuse light
-    float diffuse_amount = max(dot(normal, direction), 0.0); //decimal of how much light is reflected off surface
-    vec3 diffuse_light = lightColor * lightIntensity * diffuse_amount; //actual vector3 value of diffuse light
+    vec3 ambientLight =
+        ambientLightColor *
+        ambientColor;
 
-    //diffuse + ambient light
-    vec3 base_color = diffuseColor; //set base color to the diffuse color
+    vec3 globalDiffuse =
+        lightColor *
+        lightIntensity *
+        globalDiffuseAmount;
+
+    float globalSpecularAmount =
+        calculate_specular(
+            normal,
+            globalDirection,
+            viewDirection
+        );
+
+    vec3 globalSpecular =
+        lightColor *
+        globalSpecularAmount *
+        lightIntensity *
+        specularStrength *
+        specularColor;
+
+    vec3 baseColor = diffuseColor;
+
     if (hasDiffuseTexture != 0) {
-        base_color = texture(diffuseTexture, vertexUV).rgb; //or just sample texture if given
+        baseColor = texture(diffuseTexture, vertexUV).rgb;
     }
-    
-    vec3 lighting = ambient_light + diffuse_light + totalDiffuse; //add up the ambient and diffuse light
-    vec4 diffuse_color = vec4(base_color * lighting, 1);
 
-    //specular highlights
-    vec3 frag_normal = normalize(fragmentNormal); //normal of frag
-    vec3 view_direction = normalize(viewPosition - fragmentPosition); //frag to camera direction
-    vec3 halfway_direction = normalize(direction + view_direction); //halfway between both directions
+    vec3 lighting =
+        ambientLight +
+        globalDiffuse +
+        totalDiffuse;
 
-    float specular_strength = pow(max(dot(frag_normal, halfway_direction), 0.0), shininess);
-    vec3 specular_color = lightColor * specular_strength * lightIntensity * specularStrength * specularColor;
+    vec3 finalRgb =
+        baseColor * lighting +
+        globalSpecular +
+        totalSpecular * specularColor;
 
-    //diffuse + ambient + specular light
-    finalColor = diffuse_color + vec4(specular_color + totalSpecular * specularColor,1);
+    finalColor = vec4(finalRgb,1.0);//vec4(totalDiffuse,1.0) + 0.00001 * vec4(finalRgb, 1.0);
 }

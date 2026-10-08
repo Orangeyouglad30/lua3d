@@ -23,8 +23,6 @@ function Model.fromOBJ(file_path)
 
     --print("Creating Model from OBJ <"..file_path..">")
 
-    collectgarbage("collect")
-
     local start = os.clock()
 
     local file = assert(
@@ -48,7 +46,7 @@ function Model.fromOBJ(file_path)
     local min_x,min_y,min_z,max_x,max_y,max_z = math.huge,math.huge,math.huge,-math.huge,-math.huge,-math.huge --bounds of the total model
 
     local modelMaterials = {} 
-    local currentMaterial = nil
+    local currentMaterial = "none"
     local faces = 0
 
     --first pass to grab every vertex, normal and uv
@@ -220,9 +218,12 @@ function Model:draw(shader,mode,current_material)
 
     for _,partInfo in pairs(self.parts) do
         --print("Drawing mesh with material: "..partInfo.material)
-        if partInfo.material and partInfo.material ~= lastMaterial then
+        if partInfo.material and partInfo.material ~= lastMaterial and partInfo.material ~= "none" then
             partInfo.material:apply(shader)
             lastMaterial = partInfo.material
+        elseif partInfo.material == "none" then
+            print("no material found so applyign tho")
+            require("Lua3D").graphics.material.Ice:apply(shader)
         end
         partInfo.mesh:draw(shader,mode)
 

@@ -11,17 +11,26 @@ function Engine.load()
     newScene = Lua3D.graphics.scene.new()
     newScene.camera.CFrame = CFrame.lookAt(Vector3d.new(0,0,5),Vector3d.new(0,0,0))
 
-    local monkeyMesh = Lua3D.graphics.mesh.fromOBJ("assets/models/blender_monkey.obj")
-    local monkeyObject = Lua3D.graphics.object3d.new(monkeyMesh)
-    monkeyMesh.position = (Vector3d.new(0,0,0))
+    local testMaterial = Lua3D.graphics.material.new(
+        nil,
+        16,
+        0.0,
+        Vector3d.One(),
+        Vector3d.One(),
+        Vector3d.One()
+    )
+
+    local monkeyMesh = Lua3D.graphics.mesh.fromOBJ("assets/models/blender_monkey.obj")--,Lua3D.graphics.materials.Ice)
+    local monkeyObject = Lua3D.graphics.object3d.new(monkeyMesh)--testMaterial)
+    monkeyObject.position = (Vector3d.new(2,0,0))
 
     local ironManModel = Lua3D.graphics.model.fromOBJ("assets/models/IronMan.obj")
-    local ironManObject = Lua3D.graphics.object3d.new(ironManModel)
-    ironManObject:set_position(Vector3d.new(2,0,0))
+    local ironManObject = Lua3D.graphics.object3d.new(ironManModel)--,testMaterial)
+    ironManObject:set_position(Vector3d.new(0,0,0))
 
     local pointLight1 = Lua3D.graphics.light.newPointLight()
     pointLight1:set_position(Vector3d.new(1,0,0))
-    pointLight1:set_intensity(10)
+    pointLight1:set_intensity(24)
     pointLight1:set_color(Vector3d.new(0,1,0))
 
     newScene:add("pointLight1",pointLight1)
@@ -29,7 +38,7 @@ function Engine.load()
     newScene:add("Iron Man",ironManObject)
 end
 
-local fpsUpdateEvery = 10
+local fpsUpdateEvery = 0.5
 local lastUpdate = fpsUpdateEvery
 local frames = 0
 local fpsSmoothing = 1
@@ -38,7 +47,7 @@ local FPS = 0
 local CAMERA_SPEED = 3
 local SENSITIVITY = 20
 
-local DO_BENCHMARK = true
+local DO_BENCHMARK = false
 local BENCHMARK_UNTIL = 5
 
 local strafe_movement = 0
@@ -52,6 +61,7 @@ Input.key_pressed:Connect(function(key)
     if key=="d" then strafe_movement = strafe_movement + 1 end
     if key=="space" then vertical_movement = vertical_movement + 1 end
     if key=="left shift" then vertical_movement = vertical_movement - 1 end
+    if key=="q" then Engine:stop() end
 end)
 
 Input.key_released:Connect(function(key)
@@ -73,10 +83,21 @@ function Engine.update(dt)
         print("FPS: "..math.floor(FPS))
     end
 
-    newScene.objects["Iron Man"]:set_rotation(Lua3D.math.vector3d.new(math.sin(Engine.elapsed_time),math.cos(Engine.elapsed_time),2*math.sin(Engine.elapsed_time)))
-
+    --newScene.objects["Iron Man"]:set_rotation(Lua3D.math.vector3d.new(math.sin(Engine.elapsed_time),math.cos(Engine.elapsed_time),2*math.sin(Engine.elapsed_time)))
+    
     if forward_movement~=0 or strafe_movement~=0 or vertical_movement~=0 then
-        newScene.camera.CFrame = newScene.camera.CFrame * CFrame.new(0,0,-forward_movement*dt*CAMERA_SPEED) * CFrame.new(strafe_movement*dt*CAMERA_SPEED,0,0) * CFrame.new(0,vertical_movement*dt*CAMERA_SPEED,0)
+        local camera = newScene.camera
+        local right, up, forward = camera.CFrame:get_basis()
+
+        local movement =
+            forward * (forward_movement * dt * CAMERA_SPEED) +
+            right * (strafe_movement * dt * CAMERA_SPEED) +
+            up * (vertical_movement * dt * CAMERA_SPEED)
+
+        camera:move(movement)
+
+        --newScene.camera.CFrame = newScene.camera.CFrame * CFrame.new(strafe_movement*dt*CAMERA_SPEED,vertical_movement*dt*CAMERA_SPEED,-forward_movement*dt*CAMERA_SPEED)
+        --newScene.camera.CFrame = newScene.camera.CFrame * CFrame.new(0,0,-forward_movement*dt*CAMERA_SPEED) * CFrame.new(strafe_movement*dt*CAMERA_SPEED,0,0) * CFrame.new(0,vertical_movement*dt*CAMERA_SPEED,0)
     end
     
     if Input:is_mouse_button_down("left") then
@@ -90,6 +111,7 @@ function Engine.update(dt)
     if Input:is_mouse_locked() then
         newScene.camera:gimble(SENSITIVITY*math.rad(-Input._mouse_position_delta.x),SENSITIVITY*math.rad(-Input._mouse_position_delta.y))
     end
+    
 end
 
 function Engine.draw()

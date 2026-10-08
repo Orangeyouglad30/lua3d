@@ -7,6 +7,10 @@ package.cpath =
     "./vendor/bin/?.dll;" ..
     package.cpath
 
+if not table.unpack then
+    table.unpack = unpack
+end
+
 --Libraries
 local gl = require("moongl")
 local glfw = require("moonglfw")
