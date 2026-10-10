@@ -1,5 +1,5 @@
 local Lua3D = require("lua3d")
-local Engine = Lua3D.initialize(1280,720)
+local Engine = Lua3D.initialize(1920,1080)
 
 local CFrame = Lua3D.math.cframe
 local Vector3d = Lua3D.math.vector3d
@@ -36,6 +36,14 @@ function Engine.load()
     newScene:add("pointLight1",pointLight1)
     newScene:add("Monkey",monkeyObject)
     newScene:add("Iron Man",ironManObject)
+
+    for i=0,9 do
+        for j=1,10 do
+            local newModel = Lua3D.graphics.object3d.new(ironManModel)
+            newModel:set_position(Vector3d.new(i*2,0,j*2)+Vector3d.new(-10,0,-25))
+            newScene:add("IronMan"..i*10+j,newModel)
+        end
+    end
 end
 
 local fpsUpdateEvery = 0.5
@@ -61,7 +69,6 @@ Input.key_pressed:Connect(function(key)
     if key=="d" then strafe_movement = strafe_movement + 1 end
     if key=="space" then vertical_movement = vertical_movement + 1 end
     if key=="left shift" then vertical_movement = vertical_movement - 1 end
-    if key=="q" then Engine:stop() end
 end)
 
 Input.key_released:Connect(function(key)
@@ -72,6 +79,20 @@ Input.key_released:Connect(function(key)
     if key=="space" then vertical_movement = vertical_movement - 1 end
     if key=="left shift" then vertical_movement = vertical_movement + 1 end
 end)
+
+local FORWARD_ACTION = Input:create_axis_action("forward")
+FORWARD_ACTION:bind_keys("w","s")
+FORWARD_ACTION.Activated:Connect(function(value)
+    print("Forward value: "..value)
+    --forward_movement = value
+end)
+
+local QUIT_ACTION = Input:create_action("quit")
+QUIT_ACTION:bind_keys("q")
+QUIT_ACTION.Activated:Connect(function()
+    Engine:stop()
+end)
+
 
 function Engine.update(dt)
     frames = frames + 1

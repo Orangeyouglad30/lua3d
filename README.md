@@ -23,6 +23,18 @@ A small three-dimensional engine written in LuaJIT using OpenGL.
 
 The project includes its required Lua executable, dynamic libraries, and Lua support files inside the `vendor` folder.
 
+## Conventions
+
+### Variable Naming
+
+- Constants --> CONSTANT_VARIABLE_NAME
+- Parameters --> parameter_variable_name
+- Properties --> property_variable_name
+- Internal Property --> _internal_property_name
+- Constructor --> Object.new() or Object.fromOBJ()
+- Signal --> Object.Event:Connect(callback)
+- Method --> Object:method_name()
+
 ## Running the Engine
 
 Clone the repository:
