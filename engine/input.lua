@@ -67,12 +67,18 @@ function Input.new(window)
                 end
             elseif actionObject._type == "axis" then
                 --TODO: FIX THIS
+                local axisValue = actionObject.value
+
                 for _,actionKey in pairs(actionObject.plus_keys) do
                     if actionKey == key then
                         if action == "press" then
-                            actionObject.value = actionObject.value + 1
+                            axisValue = axisValue + 1
+                            --actionObject.value = actionObject.value + 1
+                            break
                         elseif action == "release" then
-                            actionObject.value = actionObject.value - 1
+                            axisValue = axisValue - 1
+                            --actionObject.value = actionObject.value - 1
+                            break
                         end
                     end 
                 end
@@ -80,19 +86,25 @@ function Input.new(window)
                 for _,actionKey in pairs(actionObject.minus_keys) do
                     if actionKey == key then
                         if action == "press" then
-                            actionObject.value = actionObject.value - 1
+                            axisValue = axisValue - 1
+                            --actionObject.value = actionObject.value - 1
                             break
                         elseif action == "release" then
-                            actionObject.value = actionObject.value + 1
+                            axisValue = axisValue + 1
+                            --actionObject.value = actionObject.value + 1
+                            break
                         end
                     end 
                 end
 
-                if actionObject.value ~= 0 then
-                    actionObject.Activated:Fire(actionObject.value)
+                if actionObject.value ~= axisValue then
+                    actionObject.Activated:Fire(axisValue)
+                    actionObject.value = axisValue
                 else
-                    actionObject.Deactivated:Fire()
+                    --actionObject.Deactivated:Fire()
                 end
+
+                
             end
         end
     end)
@@ -170,8 +182,6 @@ end
 
 function Input:_update_actions_in_context()
     self._actions_in_context = {}
-
-    print("Updating actions in context!")
 
     for actionName,action in pairs(self._actions) do
         if action.contexts == "any" then

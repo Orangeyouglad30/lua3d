@@ -1,5 +1,6 @@
 local Vector3d = require("math/vector3d")
 local gl = require("moongl")
+local Common = require("engine/common")
 
 local Material = {}
 Material.__index = Material
@@ -13,6 +14,7 @@ function Material.new(texture, shininess, specular_strength,diffuseColor,ambient
     self.diffuseColor = diffuseColor or Vector3d.One()
     self.ambientColor = ambientColor or Vector3d.One()
     self.specularColor = specularColor or Vector3d.One()
+    self.id = Common.generate_guid()
 
     return self
 end
@@ -26,6 +28,7 @@ function Material.fromMTL(info)
     self.diffuseColor = info.diffuseColor or Vector3d.One()
     self.ambientColor = info.ambientColor or Vector3d.One()
     self.specularColor = info.specularColor or Vector3d.One()
+    self.id = Common.generate_guid()
 
     return self
 end

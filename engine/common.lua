@@ -240,4 +240,12 @@ function Common.add_tri(
     indices[#indices + 1] = base_index + 2
 end
 
+function Common.generate_guid()
+    local template ='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+    return string.gsub(template, '[xy]', function (c)
+        local v = (c == 'x') and math.random(0, 0xf) or math.random(8, 0xb)
+        return string.format('%x', v)
+    end)
+end
+
 return Common

@@ -32,6 +32,7 @@ function Scene.new()
 
     --objects
     self.objects = {}
+    self.draw_groups = {}
 
     --lighting
     self.lights = {}
@@ -45,8 +46,51 @@ function Scene.new()
     self.lines = {}
     self.billboards = {}
 
+    --flags
+    self._redo_draw_groups = true
+
     return self
 end
+
+--[[
+function Scene:_organize_draw_groups()
+    print("okay redoing draw groups")
+
+    self.draw_groups = nil
+
+    for _,object in pairs(self.objects) do
+        if object.mesh.parts then
+            for _,meshMaterialTable in pairs(object.mesh.parts) do
+                local materialID = meshMaterialTable.material.id
+
+                if self.draw_groups[materialID] then
+                    table.insert(self.draw_groups[materialID].meshes,meshMaterialTable.mesh)
+                else
+                    self.draw_groups[materialID] = {}
+                    self.draw_groups[materialID].material = meshMaterialTable.material
+                    self.draw_groups[materialID].meshes = {}
+
+                    table.insert(self.draw_groups[materialID].meshes,meshMaterialTable.mesh)
+                end
+            end
+        else
+            local materialID = object.material.id
+
+            if self.draw_groups[materialID] then
+                table.insert(self.draw_groups[materialID].meshes,object.mesh)
+            else
+                self.draw_groups[materialID] = {}
+                self.draw_groups[materialID].material = object.material
+                self.draw_groups[materialID].meshes = {}
+
+                table.insert(self.draw_groups[materialID].meshes,object.mesh)
+            end
+        end
+    end
+
+    self._redo_draw_groups = false
+end
+]]
 
 function Scene:add(name,object)
     if not name then return end

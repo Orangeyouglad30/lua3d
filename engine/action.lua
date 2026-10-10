@@ -67,6 +67,8 @@ function Action:bind_keys(plus_keys,minus_keys)
         self.plus_keys = plus_keys
         self.minus_keys = minus_keys
     end
+
+    return self
 end
 
 function Action:set_contexts(contexts)
@@ -75,6 +77,8 @@ function Action:set_contexts(contexts)
     self.contexts = contexts
 
     Input._dirty_actions_in_context = true
+
+    return self
 end
 
 function Action:get_type()

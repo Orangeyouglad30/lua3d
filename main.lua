@@ -1,5 +1,5 @@
 local Lua3D = require("lua3d")
-local Engine = Lua3D.initialize(1920,1080)
+local Engine = Lua3D.initialize(1280,720)
 
 local CFrame = Lua3D.math.cframe
 local Vector3d = Lua3D.math.vector3d
@@ -39,7 +39,7 @@ function Engine.load()
 
     for i=0,9 do
         for j=1,10 do
-            local newModel = Lua3D.graphics.object3d.new(ironManModel)
+            local newModel = Lua3D.graphics.object3d.new(monkeyMesh)
             newModel:set_position(Vector3d.new(i*2,0,j*2)+Vector3d.new(-10,0,-25))
             newScene:add("IronMan"..i*10+j,newModel)
         end
@@ -62,37 +62,11 @@ local strafe_movement = 0
 local forward_movement = 0
 local vertical_movement = 0
 
-Input.key_pressed:Connect(function(key)
-    if key=="w" then forward_movement = forward_movement + 1 end
-    if key=="s" then forward_movement = forward_movement - 1 end
-    if key=="a" then strafe_movement = strafe_movement - 1 end
-    if key=="d" then strafe_movement = strafe_movement + 1 end
-    if key=="space" then vertical_movement = vertical_movement + 1 end
-    if key=="left shift" then vertical_movement = vertical_movement - 1 end
-end)
+local FORWARD_ACTION = Input:create_axis_action("forward"):bind_keys("w","s").Activated:Connect(function(value) forward_movement = value end)
+local STRAFE_ACTION = Input:create_axis_action("strafe"):bind_keys("d","a").Activated:Connect(function(value) strafe_movement = value end)
+local VERTICAL_ACTION = Input:create_axis_action("vertical"):bind_keys("space","left shift").Activated:Connect(function(value) vertical_movement = value end)
 
-Input.key_released:Connect(function(key)
-    if key=="w" then forward_movement = forward_movement - 1 end
-    if key=="s" then forward_movement = forward_movement + 1 end
-    if key=="a" then strafe_movement = strafe_movement + 1 end
-    if key=="d" then strafe_movement = strafe_movement - 1 end
-    if key=="space" then vertical_movement = vertical_movement - 1 end
-    if key=="left shift" then vertical_movement = vertical_movement + 1 end
-end)
-
-local FORWARD_ACTION = Input:create_axis_action("forward")
-FORWARD_ACTION:bind_keys("w","s")
-FORWARD_ACTION.Activated:Connect(function(value)
-    print("Forward value: "..value)
-    --forward_movement = value
-end)
-
-local QUIT_ACTION = Input:create_action("quit")
-QUIT_ACTION:bind_keys("q")
-QUIT_ACTION.Activated:Connect(function()
-    Engine:stop()
-end)
-
+local QUIT_ACTION = Input:create_action("quit"):bind_keys("q").Activated:Connect(function() Engine:stop() end)
 
 function Engine.update(dt)
     frames = frames + 1
@@ -104,6 +78,9 @@ function Engine.update(dt)
         print("FPS: "..math.floor(FPS))
     end
 
+    for _,object in pairs(newScene.objects) do
+        object:set_rotation(Vector3d.new(math.sin(Engine.elapsed_time),math.cos(Engine.elapsed_time),2*math.sin(Engine.elapsed_time)))
+    end
     --newScene.objects["Iron Man"]:set_rotation(Lua3D.math.vector3d.new(math.sin(Engine.elapsed_time),math.cos(Engine.elapsed_time),2*math.sin(Engine.elapsed_time)))
     
     if forward_movement~=0 or strafe_movement~=0 or vertical_movement~=0 then
