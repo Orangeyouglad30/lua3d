@@ -243,4 +243,36 @@ function Shader:set_lighting(global_lighting,lights)
     end
 end
 
+function Shader:set_shadow_maps(light_space_matrices,cascades,shadow_maps)
+    local shadow_texture_start = 8
+
+    self:set_int("shadowCascadeCount",#cascades)
+
+    for i,light_space_matrix in ipairs(light_space_matrices) do
+        self:set_matrix(
+            "lightSpaceMatrices["..(i - 1).."]",
+            light_space_matrix
+        )
+    end
+
+    for i,cascade in ipairs(cascades) do
+        self:set_float(
+            "cascadeFarDistances["..(i - 1).."]",
+            cascade.far_distance
+        )
+    end
+
+    for i,shadow_map in ipairs(shadow_maps) do
+        local unit = shadow_texture_start + i - 1
+
+        gl.active_texture(unit)
+        gl.bind_texture("2d",shadow_map.texture)
+
+        self:set_int(
+            "shadowMaps["..(i - 1).."]",
+            unit
+        )
+    end
+end
+
 return Shader

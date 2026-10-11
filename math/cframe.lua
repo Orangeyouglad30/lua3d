@@ -1,6 +1,7 @@
 --Libraries
 local Vector3d = require("math/vector3d")
 local Transform = require("engine/transform")
+local Common = require("math/common")
 
 --Constants
 
@@ -78,8 +79,8 @@ function CFrame.from_matrix(matrix)
     local m = matrix._matrix
     local position = Vector3d.new(m[1][4],m[2][4],m[3][4])
     local pitch = math.asin(math.max(-1,math.min(1,-m[2][3])))
-    local yaw = math.atan(m[1][3],m[3][3])
-    local roll = math.atan(m[2][1],m[2][2])
+    local yaw = Common.atan2(m[1][3],m[3][3])
+    local roll = Common.atan2(m[2][1],m[2][2])
 
     return CFrame.new(position,Vector3d.new(pitch,yaw,roll))
 end

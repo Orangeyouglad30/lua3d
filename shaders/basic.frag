@@ -4,6 +4,7 @@ in vec3 vertexColor;
 in vec2 vertexUV;
 in vec3 fragmentPosition;
 in vec3 fragmentNormal;
+in float fragmentViewDepth;
 
 out vec4 finalColor;
 
@@ -46,6 +47,9 @@ struct SpotLight
 
 const int MAX_SPOT_LIGHTS = 8;
 const int MAX_POINT_LIGHTS = 8;
+const int MAX_SHADOW_CASCADES = 8;
+uniform int shadowCascadeCount;
+uniform int drawShadows;
 
 uniform int spotLightCount;
 uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
@@ -53,13 +57,91 @@ uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
 uniform int pointLightCount;
 uniform PointLight pointLights[MAX_POINT_LIGHTS];
 
+//cascades
+uniform mat4 lightSpaceMatrices[MAX_SHADOW_CASCADES];
+uniform sampler2D shadowMaps[MAX_SHADOW_CASCADES];
+uniform float cascadeFarDistances[MAX_SHADOW_CASCADES];
+
+float calculate_shadow(vec3 normal, vec3 globalDirection)
+{
+    int cascadeIndex = 0;
+
+    for (int i = 0; i < MAX_SHADOW_CASCADES - 1; i++)
+    {
+        if (i >= shadowCascadeCount - 1)
+            break;
+
+        if (fragmentViewDepth > cascadeFarDistances[i])
+            cascadeIndex = i + 1;
+    }
+
+    vec4 lightPosition = lightSpaceMatrices[cascadeIndex] * vec4(fragmentPosition,1.0);
+    vec3 projectedCoordinates = lightPosition.xyz / lightPosition.w;
+    projectedCoordinates = projectedCoordinates * 0.5 + 0.5;
+
+    if (projectedCoordinates.x < 0.0 ||
+        projectedCoordinates.x > 1.0 ||
+        projectedCoordinates.y < 0.0 ||
+        projectedCoordinates.y > 1.0 ||
+        projectedCoordinates.z > 1.0) {
+        return 0.0;
+    }
+
+    vec2 texelSize =
+    1.0 / vec2(textureSize(shadowMaps[cascadeIndex],0));
+
+    float bias =
+        max(
+            0.0025 * (1.0 - dot(normal,globalDirection)),
+            0.0005
+        );
+
+    float shadow = 0.0;
+    float validSamples = 0.0;
+
+    int sampleEdgeSize = 3;
+    int lowerBound = -((sampleEdgeSize - 1) / 2);
+    int higherBound = ((sampleEdgeSize - 1) / 2);
+
+    for (int x = lowerBound; x <= higherBound; x++)
+    {
+        for (int y = lowerBound; y <= higherBound; y++)
+        {
+            vec2 sampleCoordinates =
+                projectedCoordinates.xy +
+                vec2(x,y) * texelSize;
+
+            if (sampleCoordinates.x < 0.0 ||
+                sampleCoordinates.x > 1.0 ||
+                sampleCoordinates.y < 0.0 ||
+                sampleCoordinates.y > 1.0) {
+                continue;
+            }
+
+            float storedDepth =
+                texture(
+                    shadowMaps[cascadeIndex],
+                    sampleCoordinates
+                ).r;
+
+            if (projectedCoordinates.z - bias > storedDepth)
+                shadow += 1.0;
+
+            validSamples += 1.0;
+        }
+    }
+
+    if (validSamples <= 0.0)
+        return 0.0;
+
+    return shadow / validSamples;
+}
+
 vec3 safe_normalize(vec3 value)
 {
     float lengthValue = length(value);
 
-    if (lengthValue <= 0.0001) {
-        return vec3(0.0);
-    }
+    if (lengthValue <= 0.0001) {return vec3(0.0);}
 
     return value / lengthValue;
 }
@@ -69,16 +151,11 @@ float calculate_specular(vec3 normal, vec3 lightDirection, vec3 viewDirection)
     vec3 halfwaySum = lightDirection + viewDirection;
     float halfwayLength = length(halfwaySum);
 
-    if (halfwayLength <= 0.0001) {
-        return 0.0;
-    }
+    if (halfwayLength <= 0.0001) {return 0.0;}
 
     vec3 halfwayDirection = halfwaySum / halfwayLength;
 
-    return pow(
-        max(dot(normal, halfwayDirection), 0.0),
-        shininess
-    );
+    return pow(max(dot(normal, halfwayDirection), 0.0),shininess);
 }
 
 void main()
@@ -91,9 +168,7 @@ void main()
 
     for (int i = 0; i < MAX_POINT_LIGHTS; i++)
     {
-        if (i >= pointLightCount) {
-            break;
-        }
+        if (i >= pointLightCount) {break;}
 
         PointLight light = pointLights[i];
 
@@ -103,34 +178,13 @@ void main()
 
         float diffuseAmount = max(dot(normal, pointDirection), 0.0);
 
-        float attenuation = 1.0 /
-        (
-            light.constantAttenuation +
-            light.linearAttenuation * distanceToLight +
-            light.quadraticAttenuation *
-            distanceToLight *
-            distanceToLight
-        );
+        float attenuation = 1.0 / (light.constantAttenuation + light.linearAttenuation * distanceToLight + light.quadraticAttenuation * distanceToLight * distanceToLight);
 
-        vec3 diffuse =
-            light.color *
-            light.intensity *
-            diffuseAmount *
-            attenuation;
+        vec3 diffuse = light.color * light.intensity * diffuseAmount * attenuation;
 
-        float specularAmount =
-            calculate_specular(
-                normal,
-                pointDirection,
-                viewDirection
-            );
+        float specularAmount = calculate_specular(normal, pointDirection, viewDirection);
 
-        vec3 specular =
-            light.color *
-            specularAmount *
-            light.intensity *
-            specularStrength *
-            attenuation;
+        vec3 specular = light.color * specularAmount * light.intensity * specularStrength * attenuation;
 
         totalDiffuse += diffuse;
         totalSpecular += specular;
@@ -138,9 +192,7 @@ void main()
 
     for (int i = 0; i < MAX_SPOT_LIGHTS; i++)
     {
-        if (i >= spotLightCount) {
-            break;
-        }
+        if (i >= spotLightCount) {break;}
 
         SpotLight light = spotLights[i];
 
@@ -148,85 +200,46 @@ void main()
         float distanceToLight = length(toLight);
         vec3 spotDirection = safe_normalize(toLight);
 
-        vec3 toFragment =
-            safe_normalize(fragmentPosition - light.position);
+        vec3 toFragment = safe_normalize(fragmentPosition - light.position);
 
-        vec3 normalizedLightDirection =
-            safe_normalize(light.direction);
+        vec3 normalizedLightDirection = safe_normalize(light.direction);
 
-        float angleCos =
-            dot(toFragment, normalizedLightDirection);
+        float angleCos = dot(toFragment, normalizedLightDirection);
 
         float cutoffCos = cos(light.maxAngle);
 
-        if (angleCos <= cutoffCos) {
-            continue;
-        }
+        if (angleCos <= cutoffCos) {continue;}
 
-        float diffuseAmount =
-            max(dot(normal, spotDirection), 0.0);
+        float diffuseAmount = max(dot(normal, spotDirection), 0.0);
 
-        float attenuation = 1.0 /
-        (
-            light.constantAttenuation +
-            light.linearAttenuation * distanceToLight +
-            light.quadraticAttenuation *
-            distanceToLight *
-            distanceToLight
-        );
+        float attenuation = 1.0 / (light.constantAttenuation + light.linearAttenuation * distanceToLight + light.quadraticAttenuation * distanceToLight * distanceToLight);
 
-        vec3 diffuse =
-            light.color *
-            light.intensity *
-            diffuseAmount *
-            attenuation;
+        vec3 diffuse = light.color * light.intensity * diffuseAmount * attenuation;
 
-        float specularAmount =
-            calculate_specular(
-                normal,
-                spotDirection,
-                viewDirection
-            );
+        float specularAmount = calculate_specular(normal, spotDirection, viewDirection);
 
-        vec3 specular =
-            light.color *
-            specularAmount *
-            light.intensity *
-            specularStrength *
-            attenuation;
+        vec3 specular = light.color * specularAmount * light.intensity * specularStrength * attenuation;
 
         totalDiffuse += diffuse;
         totalSpecular += specular;
     }
 
-    vec3 globalDirection =
-        safe_normalize(-lightDirection);
+    vec3 globalDirection = safe_normalize(-lightDirection);
 
-    float globalDiffuseAmount =
-        max(dot(normal, globalDirection), 0.0);
+    float globalDiffuseAmount = max(dot(normal, globalDirection), 0.0);
 
-    vec3 ambientLight =
-        ambientLightColor *
-        ambientColor;
+    vec3 ambientLight = ambientLightColor * ambientColor;
 
-    vec3 globalDiffuse =
-        lightColor *
-        lightIntensity *
-        globalDiffuseAmount;
+    vec3 globalDiffuse = lightColor * lightIntensity * globalDiffuseAmount;
 
-    float globalSpecularAmount =
-        calculate_specular(
-            normal,
-            globalDirection,
-            viewDirection
-        );
+    float shadow = 0;
+    if (drawShadows == 1) {
+        shadow = calculate_shadow(normal, globalDirection);
+    }
 
-    vec3 globalSpecular =
-        lightColor *
-        globalSpecularAmount *
-        lightIntensity *
-        specularStrength *
-        specularColor;
+    float globalSpecularAmount = calculate_specular(normal, globalDirection, viewDirection);
+
+    vec3 globalSpecular = lightColor * globalSpecularAmount * lightIntensity * specularStrength * specularColor;
 
     vec3 baseColor = diffuseColor;
 
@@ -234,15 +247,9 @@ void main()
         baseColor = texture(diffuseTexture, vertexUV).rgb;
     }
 
-    vec3 lighting =
-        ambientLight +
-        globalDiffuse +
-        totalDiffuse;
+    vec3 lighting = ambientLight + (1.0 - shadow) * globalDiffuse + totalDiffuse; //ambient + diffuse
 
-    vec3 finalRgb =
-        baseColor * lighting +
-        globalSpecular +
-        totalSpecular * specularColor;
+    vec3 finalRgb = baseColor * lighting + globalSpecular + totalSpecular * specularColor;
 
-    finalColor = vec4(finalRgb,1.0);//vec4(totalDiffuse,1.0) + 0.00001 * vec4(finalRgb, 1.0);
+    finalColor = vec4(finalRgb,1.0);
 }

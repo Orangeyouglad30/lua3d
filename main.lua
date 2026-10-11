@@ -20,13 +20,20 @@ function Engine.load()
         Vector3d.One()
     )
 
+    local cubeMesh = Lua3D.graphics.mesh.fromOBJ("assets/models/cube.obj")
     local monkeyMesh = Lua3D.graphics.mesh.fromOBJ("assets/models/blender_monkey.obj")--,Lua3D.graphics.materials.Ice)
     local monkeyObject = Lua3D.graphics.object3d.new(monkeyMesh)--testMaterial)
     monkeyObject.position = (Vector3d.new(2,0,0))
 
-    local ironManModel = Lua3D.graphics.model.fromOBJ("assets/models/IronMan.obj")
-    local ironManObject = Lua3D.graphics.object3d.new(ironManModel)--,testMaterial)
+    --local ironManModel = Lua3D.graphics.model.fromOBJ("assets/models/IronMan.obj")
+    local ironManObject = Lua3D.graphics.object3d.new(cubeMesh)--,testMaterial)
     ironManObject:set_position(Vector3d.new(0,0,0))
+
+    local planeMesh = Lua3D.graphics.mesh.fromOBJ("assets/models/plane.obj")
+    local planeObject = Lua3D.graphics.object3d.new(planeMesh)
+    planeObject:set_position(Vector3d.new(0,-2,-15))
+    planeObject:set_scale(Vector3d.new(25,25,1))
+    planeObject:set_rotation(Vector3d.new(math.rad(90),0,0))
 
     local pointLight1 = Lua3D.graphics.light.newPointLight()
     pointLight1:set_position(Vector3d.new(1,0,0))
@@ -36,10 +43,11 @@ function Engine.load()
     newScene:add("pointLight1",pointLight1)
     newScene:add("Monkey",monkeyObject)
     newScene:add("Iron Man",ironManObject)
+    newScene:add("Plane",planeObject)
 
     for i=0,9 do
         for j=1,10 do
-            local newModel = Lua3D.graphics.object3d.new(monkeyMesh)
+            local newModel = Lua3D.graphics.object3d.new(cubeMesh)
             newModel:set_position(Vector3d.new(i*2,0,j*2)+Vector3d.new(-10,0,-25))
             newScene:add("IronMan"..i*10+j,newModel)
         end
@@ -67,6 +75,7 @@ local STRAFE_ACTION = Input:create_axis_action("strafe"):bind_keys("d","a").Acti
 local VERTICAL_ACTION = Input:create_axis_action("vertical"):bind_keys("space","left shift").Activated:Connect(function(value) vertical_movement = value end)
 
 local QUIT_ACTION = Input:create_action("quit"):bind_keys("q").Activated:Connect(function() Engine:stop() end)
+local TOGGLE_ACTION = Input:create_action("toggle_shadows"):bind_keys("t").Activated:Connect(function() Engine.draw_shadows = not Engine.draw_shadows end)
 
 function Engine.update(dt)
     frames = frames + 1
@@ -78,24 +87,23 @@ function Engine.update(dt)
         print("FPS: "..math.floor(FPS))
     end
 
-    for _,object in pairs(newScene.objects) do
-        object:set_rotation(Vector3d.new(math.sin(Engine.elapsed_time),math.cos(Engine.elapsed_time),2*math.sin(Engine.elapsed_time)))
+    for name,object in pairs(newScene.objects) do
+        if name == "Plane" then goto continue end
+        --object:set_rotation(Vector3d.new(math.sin(Engine.elapsed_time),math.cos(Engine.elapsed_time),2*math.sin(Engine.elapsed_time)))
+        ::continue::
     end
     --newScene.objects["Iron Man"]:set_rotation(Lua3D.math.vector3d.new(math.sin(Engine.elapsed_time),math.cos(Engine.elapsed_time),2*math.sin(Engine.elapsed_time)))
     
-    if forward_movement~=0 or strafe_movement~=0 or vertical_movement~=0 then
-        local camera = newScene.camera
-        local right, up, forward = camera.CFrame:get_basis()
+    if forward_movement ~= 0 or strafe_movement ~= 0 or vertical_movement ~= 0 then
+    local camera = newScene.camera
+    local right, up, forward = camera.CFrame:get_basis()
 
-        local movement =
-            forward * (forward_movement * dt * CAMERA_SPEED) +
-            right * (strafe_movement * dt * CAMERA_SPEED) +
-            up * (vertical_movement * dt * CAMERA_SPEED)
+    local movement =
+        forward * (forward_movement * dt * CAMERA_SPEED) +
+        right * (strafe_movement * dt * CAMERA_SPEED) +
+        up * (vertical_movement * dt * CAMERA_SPEED)
 
         camera:move(movement)
-
-        --newScene.camera.CFrame = newScene.camera.CFrame * CFrame.new(strafe_movement*dt*CAMERA_SPEED,vertical_movement*dt*CAMERA_SPEED,-forward_movement*dt*CAMERA_SPEED)
-        --newScene.camera.CFrame = newScene.camera.CFrame * CFrame.new(0,0,-forward_movement*dt*CAMERA_SPEED) * CFrame.new(strafe_movement*dt*CAMERA_SPEED,0,0) * CFrame.new(0,vertical_movement*dt*CAMERA_SPEED,0)
     end
     
     if Input:is_mouse_button_down("left") then
@@ -109,7 +117,6 @@ function Engine.update(dt)
     if Input:is_mouse_locked() then
         newScene.camera:gimble(SENSITIVITY*math.rad(-Input._mouse_position_delta.x),SENSITIVITY*math.rad(-Input._mouse_position_delta.y))
     end
-    
 end
 
 function Engine.draw()

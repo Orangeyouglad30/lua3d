@@ -158,12 +158,14 @@ function Lua3D.initialize(window_width,window_height)
     self.elapsed_time = 0
     self._previous_time = 0
     self.running = false
+    self.draw_shadows = false
 
     --signals
     self.system.on_window_resize = Lua3D.system.signal.new()
 
     glfw.set_window_size_callback(Lua3D.window, function(_, width, height)
         gl.viewport(0, 0, width, height)
+        self._renderer:set_viewport(width,height)
 
         w_width,w_height = width,height
 
@@ -200,7 +202,7 @@ function Lua3D:stop()
 end
 
 function Lua3D:render_scene(scene,render_debug)
-    self._renderer:draw_scene(scene,"triangles")
+    self._renderer:draw_scene(scene,"triangles",self.draw_shadows)
 
     if render_debug then
         self._debug_renderer:draw_lights(scene)

@@ -1,3 +1,5 @@
+local Common = require("math/common")
+
 local Vector3d = {}
 Vector3d.__index = Vector3d
 Vector3d.__type = "Vector3d"
@@ -39,7 +41,7 @@ function Vector3d.fromDirection(direction) --takes in direction outputs rotation
 
     local direction = direction:Unit()
     local pitch = math.asin(math.max(-1,math.min(1,direction.y)))
-    local yaw = math.atan(-direction.x,-direction.z)
+    local yaw = Common.atan2(-direction.x,-direction.z)
 
     return Vector3d.new(pitch,yaw,0)
 end

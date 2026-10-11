@@ -9,6 +9,7 @@ out vec3 vertexColor;
 out vec2 vertexUV;
 out vec3 fragmentPosition;
 out vec3 fragmentNormal;
+out float fragmentViewDepth;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -17,14 +18,14 @@ uniform mat3 normalMatrix;
 
 void main()
 {
-    gl_Position = projection * view * model * vec4(position, 1.0);
+    vec4 worldPosition = model * vec4(position,1.0);
+    vec4 viewPosition = view * worldPosition;
+
+    gl_Position = projection * viewPosition;
 
     vertexColor = color;
     vertexUV = uv;
-
-    vec4 world_position = model * vec4(position, 1.0);
-    fragmentPosition = world_position.xyz;
-
+    fragmentPosition = worldPosition.xyz;
     fragmentNormal = normalMatrix * normal;
-    //fragmentNormal = mat3(transpose(inverse(model))) * normal;
+    fragmentViewDepth = -viewPosition.z;
 }

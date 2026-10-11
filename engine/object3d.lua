@@ -109,4 +109,18 @@ function Object3d:draw(shader, mode, current_material)
     return meshes, lastMaterial
 end
 
+function Object3d:draw_depth(shader)
+    local model_matrix = self:get_model()
+
+    shader:set_matrix("model",model_matrix)
+
+    if self.mesh.parts then
+        for _,part in pairs(self.mesh.parts) do
+            part.mesh:draw(shader,"triangles")
+        end
+    else
+        self.mesh:draw(shader,"triangles")
+    end
+end
+
 return Object3d
