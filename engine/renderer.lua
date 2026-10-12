@@ -37,6 +37,12 @@ function Renderer.new()
         self.shadow_maps[#self.shadow_maps + 1] = ShadowMap.new(cascade.resolution)
     end
 
+    self.shadow_blur_radius = {
+        1.0,
+        2.0,
+        4.0,
+    }
+
     self.viewport_width = 1280
     self.viewport_height = 720
 
@@ -82,7 +88,8 @@ function Renderer:draw_scene(scene,mode,draw_shadows)
         self.shader:set_shadow_maps(
             light_space_matrices,
             self.shadow_cascades,
-            self.shadow_maps
+            self.shadow_maps,
+            self.shadow_blur_radius
         )
     else
         self.shader:set_int("drawShadows",0)

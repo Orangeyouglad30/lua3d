@@ -21,10 +21,12 @@ function ShadowMap.new(size)
         size
     )
 
-    gl.texture_parameter("2d","min filter","nearest")
-    gl.texture_parameter("2d","mag filter","nearest")
     gl.texture_parameter("2d","wrap s","clamp to edge")
     gl.texture_parameter("2d","wrap t","clamp to edge")
+    gl.texture_parameter("2d","min filter","linear")
+    gl.texture_parameter("2d","mag filter","linear")
+    gl.texture_parameter("2d","compare mode","compare ref to texture")
+    gl.texture_parameter("2d","compare func","lequal")
 
     self.framebuffer = gl.new_framebuffer("draw")
     gl.bind_framebuffer("draw",self.framebuffer)

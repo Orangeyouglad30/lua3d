@@ -59,10 +59,11 @@ uniform PointLight pointLights[MAX_POINT_LIGHTS];
 
 //cascades
 uniform mat4 lightSpaceMatrices[MAX_SHADOW_CASCADES];
-uniform sampler2D shadowMaps[MAX_SHADOW_CASCADES];
+uniform sampler2DShadow shadowMaps[MAX_SHADOW_CASCADES];
 uniform float cascadeFarDistances[MAX_SHADOW_CASCADES];
+uniform float shadowBlurRadius[MAX_SHADOW_CASCADES];
 
-float calculate_shadow(vec3 normal, vec3 globalDirection)
+float calculate_shadow(vec3 normal,vec3 globalDirection)
 {
     int cascadeIndex = 0;
 
@@ -75,20 +76,24 @@ float calculate_shadow(vec3 normal, vec3 globalDirection)
             cascadeIndex = i + 1;
     }
 
-    vec4 lightPosition = lightSpaceMatrices[cascadeIndex] * vec4(fragmentPosition,1.0);
-    vec3 projectedCoordinates = lightPosition.xyz / lightPosition.w;
-    projectedCoordinates = projectedCoordinates * 0.5 + 0.5;
+    vec4 lightPosition =
+        lightSpaceMatrices[cascadeIndex] *
+        vec4(fragmentPosition,1.0);
+
+    vec3 projectedCoordinates =
+        lightPosition.xyz / lightPosition.w;
+
+    projectedCoordinates =
+        projectedCoordinates * 0.5 + 0.5;
 
     if (projectedCoordinates.x < 0.0 ||
         projectedCoordinates.x > 1.0 ||
         projectedCoordinates.y < 0.0 ||
         projectedCoordinates.y > 1.0 ||
+        projectedCoordinates.z < 0.0 ||
         projectedCoordinates.z > 1.0) {
         return 0.0;
     }
-
-    vec2 texelSize =
-    1.0 / vec2(textureSize(shadowMaps[cascadeIndex],0));
 
     float bias =
         max(
@@ -96,45 +101,47 @@ float calculate_shadow(vec3 normal, vec3 globalDirection)
             0.0005
         );
 
-    float shadow = 0.0;
-    float validSamples = 0.0;
+    vec2 texelSize = 1.0 / vec2(textureSize(shadowMaps[cascadeIndex],0));
 
-    int sampleEdgeSize = 3;
-    int lowerBound = -((sampleEdgeSize - 1) / 2);
-    int higherBound = ((sampleEdgeSize - 1) / 2);
+    vec2 radius = texelSize * shadowBlurRadius[cascadeIndex];
 
-    for (int x = lowerBound; x <= higherBound; x++)
-    {
-        for (int y = lowerBound; y <= higherBound; y++)
-        {
-            vec2 sampleCoordinates =
-                projectedCoordinates.xy +
-                vec2(x,y) * texelSize;
+    float visibility = 0.0;
 
-            if (sampleCoordinates.x < 0.0 ||
-                sampleCoordinates.x > 1.0 ||
-                sampleCoordinates.y < 0.0 ||
-                sampleCoordinates.y > 1.0) {
-                continue;
-            }
+    visibility += texture(
+        shadowMaps[cascadeIndex],
+        vec3(
+            projectedCoordinates.xy + vec2(-radius.x,-radius.y),
+            projectedCoordinates.z - bias
+        )
+    );
 
-            float storedDepth =
-                texture(
-                    shadowMaps[cascadeIndex],
-                    sampleCoordinates
-                ).r;
+    visibility += texture(
+        shadowMaps[cascadeIndex],
+        vec3(
+            projectedCoordinates.xy + vec2(radius.x,-radius.y),
+            projectedCoordinates.z - bias
+        )
+    );
 
-            if (projectedCoordinates.z - bias > storedDepth)
-                shadow += 1.0;
+    visibility += texture(
+        shadowMaps[cascadeIndex],
+        vec3(
+            projectedCoordinates.xy + vec2(-radius.x,radius.y),
+            projectedCoordinates.z - bias
+        )
+    );
 
-            validSamples += 1.0;
-        }
-    }
+    visibility += texture(
+        shadowMaps[cascadeIndex],
+        vec3(
+            projectedCoordinates.xy + vec2(radius.x,radius.y),
+            projectedCoordinates.z - bias
+        )
+    );
 
-    if (validSamples <= 0.0)
-        return 0.0;
+    visibility *= 0.25;
 
-    return shadow / validSamples;
+    return 1.0 - visibility;
 }
 
 vec3 safe_normalize(vec3 value)

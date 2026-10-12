@@ -243,7 +243,7 @@ function Shader:set_lighting(global_lighting,lights)
     end
 end
 
-function Shader:set_shadow_maps(light_space_matrices,cascades,shadow_maps)
+function Shader:set_shadow_maps(light_space_matrices,cascades,shadow_maps,shadow_blur_radius)
     local shadow_texture_start = 8
 
     self:set_int("shadowCascadeCount",#cascades)
@@ -273,6 +273,13 @@ function Shader:set_shadow_maps(light_space_matrices,cascades,shadow_maps)
             unit
         )
     end
+
+    for i,radius in ipairs(shadow_blur_radius) do
+    self:set_float(
+        "shadowBlurRadius["..(i - 1).."]",
+        radius
+    )
+end
 end
 
 return Shader
